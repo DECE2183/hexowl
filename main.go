@@ -21,7 +21,7 @@ const (
 	hexLiterals       = "0123456789ABCDEFabcdef"
 	binLiterals       = "01"
 	operatorLiterals  = "?=-+*/%^!&|~<>()"
-	operatorsPriority = "= -= += *= /= || && ?= - + * / % ^ << >> | & ~ ! ("
+	operatorsPriority = "= -= += *= /= ?= || && - + * / % ^ << >> | & ~ ! ("
 )
 
 // Word types
@@ -236,7 +236,7 @@ func calcOperator(op *Operator) interface{} {
 	case OP_LOGICAND:
 		op.Result = toBool(op.OperandA.Result) && toBool(op.OperandB.Result)
 	case OP_EQUALITY:
-		op.Result = toBool(op.OperandA.Result) == toBool(op.OperandB.Result)
+		op.Result = toNumber[uint64](op.OperandA.Result) == toNumber[uint64](op.OperandB.Result)
 	case OP_MINUS:
 		op.Result = toNumber[float64](op.OperandA.Result) - toNumber[float64](op.OperandB.Result)
 	case OP_PLUS:

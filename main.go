@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"math"
+	"math/bits"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ const (
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
-	operatorLiterals = "?=-+*/%^!&|~<>"
+	operatorLiterals = "#?=-+*/%^!&|~<>"
 )
 
 // Word types
@@ -57,8 +58,10 @@ const (
 	OP_RIGHTSHIFT
 	OP_BITOR
 	OP_BITAND
+	OP_BITXOR
+	OP_BITCLEAR
 	OP_BITINVERSE
-	OP_BRACKET
+	OP_POPCNT
 )
 
 type Word struct {
@@ -88,7 +91,7 @@ var (
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", "==", "!=", "||", "&&", "-", "+", "*", "/", "%", "^", "<<", ">>", "|", "&", "~", "!",
+		"=", "-=", "+=", "*=", "/=", "==", "!=", "||", "&&", "-", "+", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "~", "#", "!",
 	}
 )
 
@@ -119,7 +122,7 @@ func promt(reader *bufio.Reader) []Word {
 	input, _ = reader.ReadString('\n')
 
 	return parse(input)
-	// return parse("(1+1)+(1+1)")
+	// return parse("#0b111000111")
 }
 
 func parse(str string) []Word {
@@ -271,10 +274,14 @@ func calcOperator(op *Operator) interface{} {
 		op.Result = toNumber[uint64](op.OperandA.Result) | toNumber[uint64](op.OperandB.Result)
 	case OP_BITAND:
 		op.Result = toNumber[uint64](op.OperandA.Result) & toNumber[uint64](op.OperandB.Result)
+	case OP_BITXOR:
+		op.Result = toNumber[uint64](op.OperandA.Result) ^ toNumber[uint64](op.OperandB.Result)
+	case OP_BITCLEAR:
+		op.Result = toNumber[uint64](op.OperandA.Result) &^ toNumber[uint64](op.OperandB.Result)
+	case OP_POPCNT:
+		op.Result = uint64(bits.OnesCount64(toNumber[uint64](op.OperandB.Result)))
 	case OP_BITINVERSE:
 		op.Result = 0xFFFFFFFFFFFFFFFF ^ toNumber[uint64](op.OperandB.Result)
-	case OP_BRACKET:
-		op.Result = 0
 	}
 
 	return op.Result
@@ -408,7 +415,7 @@ func generateOperators(words []Word) (*Operator, error) {
 			return nil, fmt.Errorf("unknown operator '%s'", minPriorityWord.Literal)
 		}
 
-		if newOp.OpType == OP_BITINVERSE || newOp.OpType == OP_LOGICNOT {
+		if newOp.OpType == OP_BITINVERSE || newOp.OpType == OP_POPCNT || newOp.OpType == OP_LOGICNOT {
 			// One side operators
 			newOp.OperandA = &Operator{}
 		} else if newOp.OpType >= OP_ASSIGN && newOp.OpType <= OP_ASSIGNDIV {
@@ -468,12 +475,12 @@ func getOperatorType(op string) int {
 		return OP_PLUS
 	case "*":
 		return OP_MULTIPLY
+	case "**":
+		return OP_POWER
 	case "/":
 		return OP_DIVIDE
 	case "%":
 		return OP_MODULO
-	case "^":
-		return OP_POWER
 	case "<<":
 		return OP_LEFTSHIFT
 	case ">>":
@@ -482,8 +489,14 @@ func getOperatorType(op string) int {
 		return OP_BITOR
 	case "&":
 		return OP_BITAND
+	case "^":
+		return OP_BITXOR
+	case "&^":
+		return OP_BITCLEAR
 	case "~":
 		return OP_BITINVERSE
+	case "#":
+		return OP_POPCNT
 	default:
 		return -1
 	}

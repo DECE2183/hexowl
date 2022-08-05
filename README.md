@@ -1,1 +1,1 @@
-# pcalc - programmer calculator
+# pcalc - programmer's calculator

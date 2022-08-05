@@ -15,13 +15,12 @@ type number interface {
 }
 
 const (
-	stringLiterals    = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
-	decLiterals       = "0123456789"
-	hexLiterals       = "0123456789ABCDEFabcdef"
-	binLiterals       = "01"
-	controlLiterals   = "()"
-	operatorLiterals  = "?=-+*/%^!&|~<>"
-	operatorsPriority = "= -= += *= /= ( ?= || && - + * / % ^ << >> | & ~ !"
+	stringLiterals   = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
+	decLiterals      = "0123456789"
+	hexLiterals      = "0123456789ABCDEFabcdef"
+	binLiterals      = "01"
+	controlLiterals  = "()"
+	operatorLiterals = "?=-+*/%^!&|~<>"
 )
 
 // Word types
@@ -47,6 +46,7 @@ const (
 	OP_LOGICOR
 	OP_LOGICAND
 	OP_EQUALITY
+	OP_NOTEQUALITY
 	OP_MINUS
 	OP_PLUS
 	OP_MULTIPLY
@@ -80,13 +80,15 @@ var (
 	userFuncs        = map[string]CalcFunc{}
 	builtinFuncs     = map[string]CalcFunc{}
 	builtinConstants = map[string]interface{}{
-		"pi": math.Pi,
+		"pi":    math.Pi,
+		"true":  true,
+		"false": false,
 	}
 )
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", "?=", "||", "&&", "-", "+", "*", "/", "%", "^", "<<", ">>", "|", "&", "~", "!",
+		"=", "-=", "+=", "*=", "/=", "==", "!=", "||", "&&", "-", "+", "*", "/", "%", "^", "<<", ">>", "|", "&", "~", "!",
 	}
 )
 
@@ -247,6 +249,8 @@ func calcOperator(op *Operator) interface{} {
 		op.Result = toBool(op.OperandA.Result) && toBool(op.OperandB.Result)
 	case OP_EQUALITY:
 		op.Result = toNumber[uint64](op.OperandA.Result) == toNumber[uint64](op.OperandB.Result)
+	case OP_NOTEQUALITY:
+		op.Result = toNumber[uint64](op.OperandA.Result) != toNumber[uint64](op.OperandB.Result)
 	case OP_MINUS:
 		op.Result = toNumber[float64](op.OperandA.Result) - toNumber[float64](op.OperandB.Result)
 	case OP_PLUS:
@@ -328,7 +332,7 @@ func generateOperators(words []Word) (*Operator, error) {
 		return newOp, nil
 	}
 
-	minPriority := len(operatorsPriority)
+	minPriority := len(operatorsPriorityList)
 	minPriorityIndex := 0
 	var minPriorityWord *Word
 
@@ -454,8 +458,10 @@ func getOperatorType(op string) int {
 		return OP_LOGICOR
 	case "&&":
 		return OP_LOGICAND
-	case "?=":
+	case "==":
 		return OP_EQUALITY
+	case "!=":
+		return OP_NOTEQUALITY
 	case "-":
 		return OP_MINUS
 	case "+":

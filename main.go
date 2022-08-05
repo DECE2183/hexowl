@@ -15,13 +15,13 @@ type number interface {
 }
 
 const (
-	wordDividers      = " -=+-/*%!&|$#?.,:;\"'~`()[]{}<>\n"
 	stringLiterals    = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
 	decLiterals       = "0123456789"
 	hexLiterals       = "0123456789ABCDEFabcdef"
 	binLiterals       = "01"
-	operatorLiterals  = "?=-+*/%^!&|~<>()"
-	operatorsPriority = "= -= += *= /= ?= || && - + * / % ^ << >> | & ~ ! ("
+	controlLiterals   = "()"
+	operatorLiterals  = "?=-+*/%^!&|~<>"
+	operatorsPriority = "= -= += *= /= ( ?= || && - + * / % ^ << >> | & ~ !"
 )
 
 // Word types
@@ -32,6 +32,7 @@ const (
 	W_NUM_BIN
 	W_STR
 	W_OP
+	W_CTL
 )
 
 // Operator types
@@ -79,8 +80,13 @@ var (
 	userFuncs        = map[string]CalcFunc{}
 	builtinFuncs     = map[string]CalcFunc{}
 	builtinConstants = map[string]interface{}{
-		"pi": float64(3.14159265358979323846),
-		"PI": float64(3.14159265358979323846),
+		"pi": math.Pi,
+	}
+)
+
+var (
+	operatorsPriorityList = [...]string{
+		"=", "-=", "+=", "*=", "/=", "(", "?=", "||", "&&", "-", "+", "*", "/", "%", "^", "<<", ">>", "|", "&", "~", "!",
 	}
 )
 
@@ -111,7 +117,7 @@ func promt(reader *bufio.Reader) []Word {
 	input, _ = reader.ReadString('\n')
 
 	return parse(input)
-	// return parse("~0b1100")
+	// return parse("((1+2)+3)-2")
 }
 
 func parse(str string) []Word {
@@ -152,6 +158,8 @@ func parse(str string) []Word {
 						}
 					}
 				}
+			case W_CTL:
+				wordDone = true
 			case W_OP:
 				if !strings.Contains(operatorLiterals, string(c)) {
 					wordDone = true
@@ -172,6 +180,8 @@ func parse(str string) []Word {
 				wordType = W_STR
 			} else if strings.Contains(decLiterals, string(c)) {
 				wordType = W_NUM_DEC
+			} else if strings.Contains(controlLiterals, string(c)) {
+				wordType = W_CTL
 			} else if strings.Contains(operatorLiterals, string(c)) {
 				wordType = W_OP
 			} else {
@@ -323,11 +333,18 @@ func generateOperators(words []Word) (*Operator, error) {
 	var minPriorityWord *Word
 
 	for i, w := range words {
-		if w.WordType != W_OP {
+		if w.WordType != W_OP && w.Literal != "(" {
 			continue
 		}
 
-		prio := strings.Index(operatorsPriority, w.Literal)
+		prio := -1
+		for pr, lit := range operatorsPriorityList {
+			if lit == w.Literal {
+				prio = pr
+				break
+			}
+		}
+
 		if prio < 0 {
 			return nil, fmt.Errorf("unknown operator '%s'", w.Literal)
 		}
@@ -340,52 +357,102 @@ func generateOperators(words []Word) (*Operator, error) {
 	}
 
 	if minPriorityWord.Literal == "(" {
+		// Find closing bracket
+		depthLevel := 0
+		closingBracket := 0
+		for i := minPriorityIndex; i < len(words); i++ {
+			if words[i].WordType != W_CTL {
+				continue
+			}
+			if words[i].Literal == "(" {
+				depthLevel++
+			} else if words[i].Literal == ")" {
+				depthLevel--
+				if depthLevel == 0 {
+					closingBracket = i
+					break
+				}
+			}
+		}
+
+		if depthLevel > 0 || closingBracket <= 0 {
+			return nil, fmt.Errorf("unable to find closing bracket")
+		}
+
+		// If there is another operator on the left
+		if minPriorityIndex > 0 && words[minPriorityIndex-1].WordType == W_OP {
+			leftWord := words[minPriorityIndex-1]
+
+			newOp.OpType = getOperatorType(leftWord.Literal)
+			if newOp.OpType < 0 {
+				return nil, fmt.Errorf("unknown operator '%s'", leftWord.Literal)
+			}
+			if minPriorityIndex-2 < 0 {
+				return nil, fmt.Errorf("missing left side operand for operator '%s'", leftWord.Literal)
+			}
+			newOp.OperandA, err = generateOperators(words[:minPriorityIndex-1])
+			if err != nil {
+				return nil, err
+			}
+
+			// If there is another operator on the right
+			if closingBracket < len(words)-1 && words[closingBracket+1].WordType == W_OP {
+				rightWord := words[closingBracket+1]
+				if closingBracket+2 >= len(words) {
+					return nil, fmt.Errorf("missing right side operand for operator '%s'", rightWord.Literal)
+				}
+
+				newOp.OperandB = &Operator{}
+				newOp.OperandB.OpType = getOperatorType(rightWord.Literal)
+				if newOp.OpType < 0 {
+					return nil, fmt.Errorf("unknown operator '%s'", rightWord.Literal)
+				}
+
+				newOp.OperandB.OperandA, err = generateOperators(words[minPriorityIndex+1 : closingBracket])
+				if err != nil {
+					return nil, err
+				}
+				newOp.OperandB.OperandB, err = generateOperators(words[closingBracket+2:])
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				newOp.OperandB, err = generateOperators(words[minPriorityIndex+1 : closingBracket])
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			newOp.OperandA, err = generateOperators(words[minPriorityIndex+1 : closingBracket])
+			if err != nil {
+				return nil, err
+			}
+
+			// If there is another operator on the right
+			if closingBracket < len(words)-1 && words[closingBracket+1].WordType == W_OP {
+				rightWord := words[closingBracket+1]
+				if closingBracket+2 >= len(words) {
+					return nil, fmt.Errorf("missing right side operand for operator '%s'", rightWord.Literal)
+				}
+
+				newOp.OpType = getOperatorType(rightWord.Literal)
+				if newOp.OpType < 0 {
+					return nil, fmt.Errorf("unknown operator '%s'", rightWord.Literal)
+				}
+
+				newOp.OperandB, err = generateOperators(words[closingBracket+2:])
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				newOp.OpType = OP_PLUS
+				newOp.OperandB = &Operator{}
+			}
+		}
 
 	} else {
-		switch minPriorityWord.Literal {
-		case "=":
-			newOp.OpType = OP_ASSIGN
-		case "-=":
-			newOp.OpType = OP_DECREMENT
-		case "+=":
-			newOp.OpType = OP_INCREMENT
-		case "*=":
-			newOp.OpType = OP_ASSIGNMUL
-		case "/=":
-			newOp.OpType = OP_ASSIGNDIV
-		case "!":
-			newOp.OpType = OP_LOGICNOT
-		case "||":
-			newOp.OpType = OP_LOGICOR
-		case "&&":
-			newOp.OpType = OP_LOGICAND
-		case "?=":
-			newOp.OpType = OP_EQUALITY
-		case "-":
-			newOp.OpType = OP_MINUS
-		case "+":
-			newOp.OpType = OP_PLUS
-		case "*":
-			newOp.OpType = OP_MULTIPLY
-		case "/":
-			newOp.OpType = OP_DIVIDE
-		case "%":
-			newOp.OpType = OP_MODULO
-		case "^":
-			newOp.OpType = OP_POWER
-		case "<<":
-			newOp.OpType = OP_LEFTSHIFT
-		case ">>":
-			newOp.OpType = OP_RIGHTSHIFT
-		case "|":
-			newOp.OpType = OP_BITOR
-		case "&":
-			newOp.OpType = OP_BITAND
-		case "~":
-			newOp.OpType = OP_BITINVERSE
-		case "(":
-			newOp.OpType = OP_BRACKET
-		default:
+		newOp.OpType = getOperatorType(minPriorityWord.Literal)
+		if newOp.OpType < 0 {
 			return nil, fmt.Errorf("unknown operator '%s'", minPriorityWord.Literal)
 		}
 
@@ -421,10 +488,57 @@ func generateOperators(words []Word) (*Operator, error) {
 	return newOp, nil
 }
 
+func getOperatorType(op string) int {
+	switch op {
+	case "=":
+		return OP_ASSIGN
+	case "-=":
+		return OP_DECREMENT
+	case "+=":
+		return OP_INCREMENT
+	case "*=":
+		return OP_ASSIGNMUL
+	case "/=":
+		return OP_ASSIGNDIV
+	case "!":
+		return OP_LOGICNOT
+	case "||":
+		return OP_LOGICOR
+	case "&&":
+		return OP_LOGICAND
+	case "?=":
+		return OP_EQUALITY
+	case "-":
+		return OP_MINUS
+	case "+":
+		return OP_PLUS
+	case "*":
+		return OP_MULTIPLY
+	case "/":
+		return OP_DIVIDE
+	case "%":
+		return OP_MODULO
+	case "^":
+		return OP_POWER
+	case "<<":
+		return OP_LEFTSHIFT
+	case ">>":
+		return OP_RIGHTSHIFT
+	case "|":
+		return OP_BITOR
+	case "&":
+		return OP_BITAND
+	case "~":
+		return OP_BITINVERSE
+	default:
+		return -1
+	}
+}
+
 func toNumber[T number](i interface{}) T {
 	switch v := i.(type) {
 	case bool:
-		if v == true {
+		if v {
 			return T(1)
 		} else {
 			return T(0)

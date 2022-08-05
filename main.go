@@ -86,7 +86,7 @@ var (
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", "(", "?=", "||", "&&", "-", "+", "*", "/", "%", "^", "<<", ">>", "|", "&", "~", "!",
+		"=", "-=", "+=", "*=", "/=", "?=", "||", "&&", "-", "+", "*", "/", "%", "^", "<<", ">>", "|", "&", "~", "!",
 	}
 )
 
@@ -117,7 +117,7 @@ func promt(reader *bufio.Reader) []Word {
 	input, _ = reader.ReadString('\n')
 
 	return parse(input)
-	// return parse("((1+2)+3)-2")
+	// return parse("(1+1)+(1+1)")
 }
 
 func parse(str string) []Word {
@@ -332,8 +332,48 @@ func generateOperators(words []Word) (*Operator, error) {
 	minPriorityIndex := 0
 	var minPriorityWord *Word
 
+	bracketsCount := 0
+
+	if words[0].WordType == W_CTL && words[len(words)-1].WordType == W_CTL {
+		if words[0].Literal != "(" {
+			return nil, fmt.Errorf("missing opening bracket")
+		}
+		if words[len(words)-1].Literal != ")" {
+			return nil, fmt.Errorf("missing closing bracket")
+		}
+
+		for i := 1; i < len(words)-1; i++ {
+			if words[i].WordType != W_CTL {
+				continue
+			}
+			if words[i].Literal == "(" {
+				bracketsCount++
+			} else {
+				bracketsCount--
+				if bracketsCount < 0 {
+					break
+				}
+			}
+		}
+
+		if bracketsCount >= 0 {
+			words = words[1 : len(words)-1]
+		}
+	}
+
+	bracketsCount = 0
+
 	for i, w := range words {
-		if w.WordType != W_OP && w.Literal != "(" {
+		if w.WordType == W_CTL {
+			if w.Literal == "(" {
+				bracketsCount++
+			} else {
+				bracketsCount--
+			}
+			continue
+		}
+
+		if w.WordType != W_OP || bracketsCount > 0 {
 			continue
 		}
 
@@ -356,100 +396,8 @@ func generateOperators(words []Word) (*Operator, error) {
 		}
 	}
 
-	if minPriorityWord.Literal == "(" {
-		// Find closing bracket
-		depthLevel := 0
-		closingBracket := 0
-		for i := minPriorityIndex; i < len(words); i++ {
-			if words[i].WordType != W_CTL {
-				continue
-			}
-			if words[i].Literal == "(" {
-				depthLevel++
-			} else if words[i].Literal == ")" {
-				depthLevel--
-				if depthLevel == 0 {
-					closingBracket = i
-					break
-				}
-			}
-		}
-
-		if depthLevel > 0 || closingBracket <= 0 {
-			return nil, fmt.Errorf("unable to find closing bracket")
-		}
-
-		// If there is another operator on the left
-		if minPriorityIndex > 0 && words[minPriorityIndex-1].WordType == W_OP {
-			leftWord := words[minPriorityIndex-1]
-
-			newOp.OpType = getOperatorType(leftWord.Literal)
-			if newOp.OpType < 0 {
-				return nil, fmt.Errorf("unknown operator '%s'", leftWord.Literal)
-			}
-			if minPriorityIndex-2 < 0 {
-				return nil, fmt.Errorf("missing left side operand for operator '%s'", leftWord.Literal)
-			}
-			newOp.OperandA, err = generateOperators(words[:minPriorityIndex-1])
-			if err != nil {
-				return nil, err
-			}
-
-			// If there is another operator on the right
-			if closingBracket < len(words)-1 && words[closingBracket+1].WordType == W_OP {
-				rightWord := words[closingBracket+1]
-				if closingBracket+2 >= len(words) {
-					return nil, fmt.Errorf("missing right side operand for operator '%s'", rightWord.Literal)
-				}
-
-				newOp.OperandB = &Operator{}
-				newOp.OperandB.OpType = getOperatorType(rightWord.Literal)
-				if newOp.OpType < 0 {
-					return nil, fmt.Errorf("unknown operator '%s'", rightWord.Literal)
-				}
-
-				newOp.OperandB.OperandA, err = generateOperators(words[minPriorityIndex+1 : closingBracket])
-				if err != nil {
-					return nil, err
-				}
-				newOp.OperandB.OperandB, err = generateOperators(words[closingBracket+2:])
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				newOp.OperandB, err = generateOperators(words[minPriorityIndex+1 : closingBracket])
-				if err != nil {
-					return nil, err
-				}
-			}
-		} else {
-			newOp.OperandA, err = generateOperators(words[minPriorityIndex+1 : closingBracket])
-			if err != nil {
-				return nil, err
-			}
-
-			// If there is another operator on the right
-			if closingBracket < len(words)-1 && words[closingBracket+1].WordType == W_OP {
-				rightWord := words[closingBracket+1]
-				if closingBracket+2 >= len(words) {
-					return nil, fmt.Errorf("missing right side operand for operator '%s'", rightWord.Literal)
-				}
-
-				newOp.OpType = getOperatorType(rightWord.Literal)
-				if newOp.OpType < 0 {
-					return nil, fmt.Errorf("unknown operator '%s'", rightWord.Literal)
-				}
-
-				newOp.OperandB, err = generateOperators(words[closingBracket+2:])
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				newOp.OpType = OP_PLUS
-				newOp.OperandB = &Operator{}
-			}
-		}
-
+	if minPriorityWord == nil {
+		return nil, fmt.Errorf("operators not found")
 	} else {
 		newOp.OpType = getOperatorType(minPriorityWord.Literal)
 		if newOp.OpType < 0 {

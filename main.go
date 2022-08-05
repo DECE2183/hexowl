@@ -17,7 +17,7 @@ type number interface {
 
 const (
 	stringLiterals   = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
-	decLiterals      = "0123456789"
+	decLiterals      = "0123456789."
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
@@ -33,11 +33,13 @@ const (
 	W_STR
 	W_OP
 	W_CTL
+	W_FUNC
 )
 
 // Operator types
 const (
 	OP_NONE = iota
+
 	OP_ASSIGN
 	OP_DECREMENT
 	OP_INCREMENT
@@ -62,6 +64,9 @@ const (
 	OP_BITCLEAR
 	OP_BITINVERSE
 	OP_POPCNT
+
+	OP_USERFUNC
+	OP_BUILTINFUNC
 )
 
 type Word struct {
@@ -76,12 +81,26 @@ type Operator struct {
 	Result   interface{}
 }
 
-type CalcFunc func(args ...interface{}) interface{}
+type userFunc map[string]string
+type builtinFunc func(args ...interface{}) (interface{}, error)
 
 var (
-	userVars         = map[string]interface{}{}
-	userFuncs        = map[string]CalcFunc{}
-	builtinFuncs     = map[string]CalcFunc{}
+	userVars     = map[string]interface{}{}
+	userFuncs    = map[string]userFunc{}
+	builtinFuncs = map[string]builtinFunc{
+		"sin": func(args ...interface{}) (interface{}, error) {
+			if len(args) < 1 {
+				return nil, fmt.Errorf("not enough arguments")
+			}
+			return math.Sin(toNumber[float64](args[0])), nil
+		},
+		"cos": func(args ...interface{}) (interface{}, error) {
+			if len(args) < 1 {
+				return nil, fmt.Errorf("not enough arguments")
+			}
+			return math.Cos(toNumber[float64](args[0])), nil
+		},
+	}
 	builtinConstants = map[string]interface{}{
 		"pi":    math.Pi,
 		"true":  true,
@@ -116,13 +135,13 @@ func main() {
 }
 
 func promt(reader *bufio.Reader) []Word {
+	// return parse("5 + sin(3)")
 	var input string
 
 	fmt.Printf(">: ")
 	input, _ = reader.ReadString('\n')
 
 	return parse(input)
-	// return parse("#0b111000111")
 }
 
 func parse(str string) []Word {
@@ -282,6 +301,11 @@ func calcOperator(op *Operator) interface{} {
 		op.Result = uint64(bits.OnesCount64(toNumber[uint64](op.OperandB.Result)))
 	case OP_BITINVERSE:
 		op.Result = 0xFFFFFFFFFFFFFFFF ^ toNumber[uint64](op.OperandB.Result)
+
+	case OP_BUILTINFUNC:
+		op.Result, _ = builtinFuncs[op.OperandA.Result.(string)](op.OperandB.Result)
+	case OP_USERFUNC:
+		op.Result = 0
 	}
 
 	return op.Result
@@ -303,18 +327,28 @@ func generateOperators(words []Word) (*Operator, error) {
 		w := words[0]
 		switch w.WordType {
 		case W_STR:
-			// Try to find variable of function
+			// Try to find variable
 			val, found := tryGetVar(w.Literal)
 			if !found {
-				val, found = userFuncs[w.Literal]
-				if !found {
-					val, found = builtinFuncs[w.Literal]
-					if !found {
-						return nil, fmt.Errorf("there is no variable or function named '%s'", w.Literal)
-					}
-				}
+				return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
 			}
 			newOp.Result = val
+
+		case W_FUNC:
+			// Try to find function
+			_, found := userFuncs[w.Literal]
+			if found {
+				newOp.OpType = OP_USERFUNC
+				newOp.Result = w.Literal
+				break
+			}
+			_, found = builtinFuncs[w.Literal]
+			if found {
+				newOp.OpType = OP_BUILTINFUNC
+				newOp.Result = w.Literal
+				break
+			}
+			return nil, fmt.Errorf("there is no function named '%s'", w.Literal)
 
 		case W_NUM_DEC, W_NUM_HEX, W_NUM_BIN:
 			switch w.WordType {
@@ -374,12 +408,20 @@ func generateOperators(words []Word) (*Operator, error) {
 
 	bracketsCount = 0
 
-	for i, w := range words {
+	for i := 0; i < len(words); i++ {
+		w := words[i]
+
 		if w.WordType == W_CTL {
 			if w.Literal == "(" {
 				bracketsCount++
 			} else {
 				bracketsCount--
+			}
+			continue
+		} else if w.WordType == W_STR {
+			// Function call detect
+			if i+1 < len(words)-1 && words[i+1].WordType == W_CTL && words[i+1].Literal == "(" {
+				words[i].WordType = W_FUNC
 			}
 			continue
 		}
@@ -408,7 +450,27 @@ func generateOperators(words []Word) (*Operator, error) {
 	}
 
 	if minPriorityWord == nil {
-		return nil, fmt.Errorf("operators not found")
+		if words[0].WordType == W_FUNC {
+			if len(words) < 3 {
+				return nil, fmt.Errorf("missing function '%s' arguments", words[0].Literal)
+			}
+			newOp.OperandA, err = generateOperators(words[:1])
+			if err != nil {
+				return nil, err
+			}
+			newOp.OpType = newOp.OperandA.OpType
+			newOp.OperandA.OpType = OP_NONE
+			if len(words) > 3 {
+				newOp.OperandB, err = generateOperators(words[2 : len(words)-1])
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				newOp.OperandB = &Operator{}
+			}
+		} else {
+			return nil, fmt.Errorf("operators not found")
+		}
 	} else {
 		newOp.OpType = getOperatorType(minPriorityWord.Literal)
 		if newOp.OpType < 0 {

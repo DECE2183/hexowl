@@ -113,15 +113,6 @@ var (
 			}
 			return math.Pow(toNumber[float64](args[0]), toNumber[float64](args[1])), nil
 		},
-		"clear": func(args ...interface{}) (interface{}, error) {
-			fmt.Printf("\x1bc")
-			return nil, nil
-		},
-		"exit": func(args ...interface{}) (interface{}, error) {
-			exitCode := toNumber[int64](args[0])
-			os.Exit(int(exitCode))
-			return exitCode, nil
-		},
 		"vars": func(args ...interface{}) (interface{}, error) {
 			varsCount := uint64(len(userVars))
 			if varsCount > 0 {
@@ -146,12 +137,14 @@ var (
 			envID := toNumber[uint64](args[0])
 			userDir, err := os.UserHomeDir()
 			if err != nil {
-				return nil, fmt.Errorf("unable to get user home directory")
+				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to get user home directory\n", envID)
+				return 0, nil
 			}
 			saveDir := fmt.Sprintf("%s/.pcalc/environment", userDir)
 			err = os.MkdirAll(saveDir, 0666)
 			if err != nil {
-				return nil, fmt.Errorf("unable to create save directory")
+				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create save directory\n", envID)
+				return 0, nil
 			}
 			savePath := fmt.Sprintf("%s/0x%016X.json", saveDir, envID)
 			saveData := saveStruct{
@@ -160,35 +153,49 @@ var (
 			}
 			saveJson, err := json.Marshal(saveData)
 			if err != nil {
-				return nil, fmt.Errorf("unable to create data")
+				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create data\n", envID)
+				return 0, nil
 			}
 			err = os.WriteFile(savePath, saveJson, 0666)
 			if err != nil {
-				return nil, fmt.Errorf("unable to write data to file")
+				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to write file\n", envID)
+				return 0, nil
 			}
 			fmt.Printf("\n\tSaving environment as 0x%016X\n", envID)
-			return 0, nil
+			return uint64(1), nil
 		},
 		"load": func(args ...interface{}) (interface{}, error) {
 			envID := toNumber[uint64](args[0])
 			userDir, err := os.UserHomeDir()
 			if err != nil {
-				return nil, fmt.Errorf("unable to get user home directory")
+				fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to get user home directory\n", envID)
+				return 0, nil
 			}
 			loadPath := fmt.Sprintf("%s/.pcalc/environment/0x%016X.json", userDir, envID)
 			loadData := saveStruct{}
 			loadBuffer, err := os.ReadFile(loadPath)
 			if err != nil {
-				return nil, fmt.Errorf("environment doesn't exists")
+				fmt.Printf("\n\tEnvironment 0x%016X load failed: environment doesn't exists\n", envID)
+				return 0, nil
 			}
 			err = json.Unmarshal(loadBuffer, &loadData)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse environment data")
+				fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to parse environment data\n", envID)
+				return 0, nil
 			}
 			userVars = loadData.UserVars
 			userFuncs = loadData.UserFuncs
 			fmt.Printf("\n\tEnvironment 0x%016X loaded\n", envID)
-			return 0, nil
+			return uint64(1), nil
+		},
+		"clear": func(args ...interface{}) (interface{}, error) {
+			fmt.Printf("\x1bc")
+			return nil, nil
+		},
+		"exit": func(args ...interface{}) (interface{}, error) {
+			exitCode := toNumber[int64](args[0])
+			os.Exit(int(exitCode))
+			return exitCode, nil
 		},
 	}
 	builtinConstants = map[string]interface{}{
@@ -200,7 +207,7 @@ var (
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "-", "+", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "~", "#", "!",
+		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "!", "-", "+", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "~", "#",
 	}
 )
 

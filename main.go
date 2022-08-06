@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/bits"
@@ -21,7 +22,7 @@ const (
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
-	operatorLiterals = "#?=-+*/%^!&|~<>"
+	operatorLiterals = "#?=-+*/%^!&|~<>,"
 )
 
 // Word types
@@ -65,6 +66,7 @@ const (
 	OP_BITINVERSE
 	OP_POPCNT
 
+	OP_FUNCARGSEP
 	OP_USERFUNC
 	OP_BUILTINFUNC
 )
@@ -84,6 +86,11 @@ type Operator struct {
 type userFunc map[string]string
 type builtinFunc func(args ...interface{}) (interface{}, error)
 
+type saveStruct struct {
+	UserVars  map[string]interface{}
+	UserFuncs map[string]userFunc
+}
+
 var (
 	userVars     = map[string]interface{}{}
 	userFuncs    = map[string]userFunc{}
@@ -100,6 +107,85 @@ var (
 			}
 			return math.Cos(toNumber[float64](args[0])), nil
 		},
+		"pow": func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, fmt.Errorf("not enough arguments")
+			}
+			return math.Pow(toNumber[float64](args[0]), toNumber[float64](args[1])), nil
+		},
+		"exit": func(args ...interface{}) (interface{}, error) {
+			exitCode := toNumber[int64](args[0])
+			os.Exit(int(exitCode))
+			return exitCode, nil
+		},
+		"vars": func(args ...interface{}) (interface{}, error) {
+			varsCount := uint64(len(userVars))
+			if varsCount > 0 {
+				fmt.Printf("\n\tUser variables:\n")
+				for key, value := range userVars {
+					fmt.Printf("\t\t[%s] = %v\n", key, value)
+				}
+			} else {
+				fmt.Printf("\n\tThere is no user defined variables.\n")
+			}
+			if len(builtinConstants) > 0 {
+				fmt.Printf("\n\tBuiltin constants:\n")
+				for key, value := range builtinConstants {
+					fmt.Printf("\t\t[%s] = %v\n", key, value)
+				}
+			} else {
+				fmt.Printf("\n\tThere is no builtin constants.\n")
+			}
+			return varsCount, nil
+		},
+		"save": func(args ...interface{}) (interface{}, error) {
+			envID := toNumber[uint64](args[0])
+			userDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("unable to get user home directory")
+			}
+			saveDir := fmt.Sprintf("%s/.pcalc/environment", userDir)
+			err = os.MkdirAll(saveDir, 0666)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create save directory")
+			}
+			savePath := fmt.Sprintf("%s/0x%016X.json", saveDir, envID)
+			saveData := saveStruct{
+				UserVars:  userVars,
+				UserFuncs: userFuncs,
+			}
+			saveJson, err := json.Marshal(saveData)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create data")
+			}
+			err = os.WriteFile(savePath, saveJson, 0666)
+			if err != nil {
+				return nil, fmt.Errorf("unable to write data to file")
+			}
+			fmt.Printf("\n\tSaving environment as 0x%016X\n", envID)
+			return 0, nil
+		},
+		"load": func(args ...interface{}) (interface{}, error) {
+			envID := toNumber[uint64](args[0])
+			userDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("unable to get user home directory")
+			}
+			loadPath := fmt.Sprintf("%s/.pcalc/environment/0x%016X.json", userDir, envID)
+			loadData := saveStruct{}
+			loadBuffer, err := os.ReadFile(loadPath)
+			if err != nil {
+				return nil, fmt.Errorf("environment doesn't exists")
+			}
+			err = json.Unmarshal(loadBuffer, &loadData)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse environment data")
+			}
+			userVars = loadData.UserVars
+			userFuncs = loadData.UserFuncs
+			fmt.Printf("\n\tEnvironment 0x%016X loaded\n", envID)
+			return 0, nil
+		},
 	}
 	builtinConstants = map[string]interface{}{
 		"pi":    math.Pi,
@@ -110,7 +196,7 @@ var (
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", "==", "!=", "||", "&&", "-", "+", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "~", "#", "!",
+		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "-", "+", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "~", "#", "!",
 	}
 )
 
@@ -128,7 +214,7 @@ func main() {
 			if err != nil {
 				fmt.Printf("\n\tError occurred: %s\n\n", err)
 			} else {
-				fmt.Printf("\n\tTime:   %d ms\r\n\n", calcTime.Milliseconds())
+				fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
 			}
 		}
 	}
@@ -228,24 +314,35 @@ func calculate(words []Word) error {
 		return err
 	}
 
-	val := calcOperator(operator)
+	val, err := calcOperator(operator)
+	if err != nil {
+		return err
+	}
 
-	fmt.Printf("\n\tResult: %v\r\n", toNumber[float64](val))
-	fmt.Printf("\t        0x%X\r\n", toNumber[uint64](val))
-	fmt.Printf("\t        0b%b\r\n", toNumber[uint64](val))
+	fmt.Printf("\n\tResult:\t%v\r\n", toNumber[float64](val))
+	fmt.Printf("\t\t0x%X\r\n", toNumber[uint64](val))
+	fmt.Printf("\t\t0b%b\r\n", toNumber[uint64](val))
 
 	return nil
 }
 
-func calcOperator(op *Operator) interface{} {
+func calcOperator(op *Operator) (interface{}, error) {
+	var err error
+
 	if op.OpType == OP_NONE {
-		return op.Result
+		return op.Result, nil
 	} else if op.OperandA == nil || op.OperandB == nil {
-		return 0
+		return 0, nil
 	}
 
-	op.OperandA.Result = calcOperator(op.OperandA)
-	op.OperandB.Result = calcOperator(op.OperandB)
+	op.OperandA.Result, err = calcOperator(op.OperandA)
+	if err != nil {
+		return nil, err
+	}
+	op.OperandB.Result, err = calcOperator(op.OperandB)
+	if err != nil {
+		return nil, err
+	}
 
 	switch op.OpType {
 	case OP_ASSIGN:
@@ -302,13 +399,32 @@ func calcOperator(op *Operator) interface{} {
 	case OP_BITINVERSE:
 		op.Result = 0xFFFFFFFFFFFFFFFF ^ toNumber[uint64](op.OperandB.Result)
 
+	case OP_FUNCARGSEP:
+		switch op.OperandA.Result.(type) {
+		case []interface{}:
+			break
+		default:
+			op.OperandA.Result = []interface{}{op.OperandA.Result}
+		}
+		switch op.OperandB.Result.(type) {
+		case []interface{}:
+			break
+		default:
+			op.OperandB.Result = []interface{}{op.OperandB.Result}
+		}
+		op.Result = append(op.OperandA.Result.([]interface{}), op.OperandB.Result.([]interface{})...)
 	case OP_BUILTINFUNC:
-		op.Result, _ = builtinFuncs[op.OperandA.Result.(string)](op.OperandB.Result)
+		switch op.OperandB.Result.(type) {
+		case []interface{}:
+			op.Result, err = builtinFuncs[op.OperandA.Result.(string)](op.OperandB.Result.([]interface{})...)
+		default:
+			op.Result, err = builtinFuncs[op.OperandA.Result.(string)](op.OperandB.Result)
+		}
 	case OP_USERFUNC:
 		op.Result = 0
 	}
 
-	return op.Result
+	return op.Result, err
 }
 
 func tryGetVar(literal string) (val interface{}, found bool) {
@@ -521,6 +637,8 @@ func getOperatorType(op string) int {
 		return OP_ASSIGNMUL
 	case "/=":
 		return OP_ASSIGNDIV
+	case ",":
+		return OP_FUNCARGSEP
 	case "!":
 		return OP_LOGICNOT
 	case "||":

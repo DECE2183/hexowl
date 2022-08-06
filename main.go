@@ -113,6 +113,10 @@ var (
 			}
 			return math.Pow(toNumber[float64](args[0]), toNumber[float64](args[1])), nil
 		},
+		"clear": func(args ...interface{}) (interface{}, error) {
+			fmt.Printf("\x1bc")
+			return nil, nil
+		},
 		"exit": func(args ...interface{}) (interface{}, error) {
 			exitCode := toNumber[int64](args[0])
 			os.Exit(int(exitCode))
@@ -319,9 +323,11 @@ func calculate(words []Word) error {
 		return err
 	}
 
-	fmt.Printf("\n\tResult:\t%v\r\n", toNumber[float64](val))
-	fmt.Printf("\t\t0x%X\r\n", toNumber[uint64](val))
-	fmt.Printf("\t\t0b%b\r\n", toNumber[uint64](val))
+	if val != nil {
+		fmt.Printf("\n\tResult:\t%v\r\n", toNumber[float64](val))
+		fmt.Printf("\t\t0x%X\r\n", toNumber[uint64](val))
+		fmt.Printf("\t\t0b%b\r\n", toNumber[uint64](val))
+	}
 
 	return nil
 }

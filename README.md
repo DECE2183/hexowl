@@ -25,33 +25,33 @@ go build
 
 ### Operators
 
-|Operator           |Syntax |
-|-------------------|-------|
-|Positive bits count|`#`    |
-|Bitwise NOT        |`~`    |
-|Bitclear (AND NOT) |`&^`   |
-|Bitwise XOR        |`^`    |
-|Bitwise AND        |`&`    |
-|Bitwise OR         |`\|`   |
-|Right shift        |`>>`   |
-|Left shift         |`<<`   |
-|Modulo             |`%`    |
-|Division           |`/`    |
-|Exponentiation     |`**`   |
-|Multiplication     |`*`    |
-|Addition           |`+`    |
-|Subtraction        |`-`    |
-|Logical NOT        |`!`    |
-|Logical AND        |`&&`   |
-|Logical OR         |`\|\|` |
-|Logical not equal  |`!=`   |
-|Logical equal      |`==`   |
-|Argument iterator  |`,`    |
-|Divide and assign  |`/=`   |
-|Mutiply and assign |`*=`   |
-|Add and assign     |`+=`   |
-|Subtract and assign|`-=`   |
-|Assign             |`=`    |
+|Operator           |Syntax     |
+|-------------------|-----------|
+|Positive bits count|`#`        |
+|Bitwise NOT        |`~`        |
+|Bitclear (AND NOT) |`&~`, `&^` |
+|Bitwise XOR        |`^`        |
+|Bitwise AND        |`&`        |
+|Bitwise OR         |`\|`       |
+|Right shift        |`>>`       |
+|Left shift         |`<<`       |
+|Modulo             |`%`        |
+|Division           |`/`        |
+|Exponentiation     |`**`       |
+|Multiplication     |`*`        |
+|Addition           |`+`        |
+|Subtraction        |`-`        |
+|Logical NOT        |`!`        |
+|Logical AND        |`&&`       |
+|Logical OR         |`\|\|`     |
+|Logical not equal  |`!=`       |
+|Logical equal      |`==`       |
+|Argument iterator  |`,`        |
+|Divide and assign  |`/=`       |
+|Mutiply and assign |`*=`       |
+|Add and assign     |`+=`       |
+|Subtract and assign|`-=`       |
+|Assign             |`=`        |
 
 ### Built in constants
 

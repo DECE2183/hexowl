@@ -135,7 +135,7 @@ type saveStruct struct {
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "!", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "~", "#",
+		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "!", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
 	}
 )
 
@@ -739,7 +739,7 @@ func getOperatorType(op string) OperatorType {
 		return OP_BITAND
 	case "^":
 		return OP_BITXOR
-	case "&^":
+	case "&^", "&~":
 		return OP_BITCLEAR
 	case "~":
 		return OP_BITINVERSE

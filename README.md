@@ -1,5 +1,8 @@
 # **hexowl**
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/dece2183/hexowl)](https://goreportcard.com/report/github.com/dece2183/hexowl)
+[![Release](https://img.shields.io/github/v/release/dece2183/hexowl)](https://github.com/dece2183/hexowl/releases)
+
 **hexowl** is a Lightweight and flexible programmer's calculator written in Go.
 
 The main purpose of hexowl is to perform operations on numbers regardless of their base. A single expression can contain decimal, hexadecimal, and binary numbers.
@@ -12,6 +15,12 @@ The main purpose of hexowl is to perform operations on numbers regardless of the
  - Boolean operators;
  - User defined variables;
  - Ability to save and load the working environment.
+
+# Installation
+
+```bash
+go install github.com/dece2183/hexowl@latest 
+```
 
 # Building
 

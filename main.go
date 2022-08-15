@@ -161,6 +161,12 @@ var (
 			}
 			return math.Pow(toNumber[float64](args[0]), toNumber[float64](args[1])), nil
 		},
+		"sqrt": func(args ...interface{}) (interface{}, error) {
+			if len(args) < 1 {
+				return nil, fmt.Errorf("not enough arguments")
+			}
+			return math.Sqrt(toNumber[float64](args[0])), nil
+		},
 		"vars": func(args ...interface{}) (interface{}, error) {
 			varsCount := uint64(len(userVars))
 			if varsCount > 0 {
@@ -274,7 +280,7 @@ func main() {
 }
 
 func promt(reader *bufio.Reader) []Word {
-	// return parse("3 * -1")
+	// return parse("abs(x) = ")
 	var input string
 
 	fmt.Printf(">: ")

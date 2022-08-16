@@ -30,12 +30,25 @@ func SetFunction(name string, function Func) {
 }
 
 func SetFunctionVariant(name string, variant FuncVariant) {
+	var currentFunc Func
+
 	if !HasFunction(name) {
-		functions[name] = Func{
+		currentFunc = Func{
 			Variants: make([]FuncVariant, 0),
 		}
+	} else {
+		currentFunc = functions[name]
 	}
-	currentFunc := functions[name]
+
+	for i, v := range currentFunc.Variants {
+		// if variant with such arguments already exists replace it
+		if utils.WordsEqual(v.Args, variant.Args) {
+			currentFunc.Variants[i] = variant
+			functions[name] = currentFunc
+			return
+		}
+	}
+
 	currentFunc.Variants = append(currentFunc.Variants, variant)
 	functions[name] = currentFunc
 }
@@ -52,4 +65,31 @@ func DropFunctions() {
 	for name := range functions {
 		delete(functions, name)
 	}
+}
+
+// func (v Func) Exec(args ...interface{}) (interface{}, error) {
+
+// }
+
+func (v FuncVariant) ArgNames() (pos []string) {
+	for _, w := range v.Args {
+		if w.Type == utils.W_STR {
+			pos = append(pos, w.Literal)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+func (v FuncVariant) String() string {
+	str := ""
+	for _, lw := range v.Args {
+		str += lw.Literal
+	}
+	str += " -> "
+	for _, rw := range v.Body {
+		str += rw.Literal
+	}
+	return str
 }

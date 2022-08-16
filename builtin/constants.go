@@ -10,7 +10,7 @@ var constants = map[string]interface{}{
 	"e":     math.E,
 	"true":  true,
 	"false": false,
-	"help":  "Enter expression you want to calc and press Enter to get the result.\n\tTo define a variable type its name and assign the value with '=' operator.\n\tType 'funcs()' to see all available functions.\n\tType 'vars()' to see all available variables.",
+	"help":  "Type in the expression you want to calc and press Enter to get the result.\n\tTo define a variable type its name and assign the value with '=' operator.\n\tType 'funcs()' to see all available functions.\n\tType 'vars()' to see all available variables.",
 }
 
 func HasConstant(name string) bool {

@@ -34,7 +34,7 @@ func main() {
 }
 
 func promt(reader *bufio.Reader) []utils.Word {
-	// return parse("help + 0")
+	// return utils.ParsePromt("abs(x) -> sqrt(x*x)")
 	var input string
 
 	fmt.Printf(">: ")
@@ -44,7 +44,7 @@ func promt(reader *bufio.Reader) []utils.Word {
 }
 
 func calculate(words []utils.Word) error {
-	operator, err := operators.Generate(words)
+	operator, err := operators.Generate(words, nil)
 	if err != nil {
 		return err
 	}

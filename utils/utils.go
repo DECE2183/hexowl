@@ -33,6 +33,18 @@ type Word struct {
 	Literal string
 }
 
+func WordsEqual(a, b []Word) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v.Literal != b[i].Literal {
+			return false
+		}
+	}
+	return true
+}
+
 func ParsePromt(str string) []Word {
 	words := make([]Word, 0)
 

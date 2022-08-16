@@ -69,6 +69,14 @@ var (
 	}
 )
 
+func getLocalVariable(localVars *map[string]interface{}, literal string) (val interface{}, found bool) {
+	if localVars == nil {
+		return nil, false
+	}
+	val, found = (*localVars)[literal]
+	return
+}
+
 func getVariable(literal string) (val interface{}, found bool) {
 	val, found = user.GetVariable(literal)
 	if !found {
@@ -144,7 +152,7 @@ func GetType(op string) operatorType {
 	}
 }
 
-func Generate(words []utils.Word) (*Operator, error) {
+func Generate(words []utils.Word, localVars *map[string]interface{}) (*Operator, error) {
 	var err error
 	newOp := &Operator{}
 
@@ -156,9 +164,12 @@ func Generate(words []utils.Word) (*Operator, error) {
 		switch w.Type {
 		case utils.W_STR:
 			// Try to find variable
-			val, found := getVariable(w.Literal)
+			val, found := getLocalVariable(localVars, w.Literal)
 			if !found {
-				return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
+				val, found = getVariable(w.Literal)
+				if !found {
+					return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
+				}
 			}
 			newOp.Result = val
 
@@ -286,14 +297,14 @@ func Generate(words []utils.Word) (*Operator, error) {
 			if len(words) < 3 {
 				return nil, fmt.Errorf("missing function '%s' arguments", words[0].Literal)
 			}
-			newOp.OperandA, err = Generate(words[:1])
+			newOp.OperandA, err = Generate(words[:1], localVars)
 			if err != nil {
 				return nil, err
 			}
 			newOp.Type = newOp.OperandA.Type
 			newOp.OperandA.Type = OP_NONE
 			if len(words) > 3 {
-				newOp.OperandB, err = Generate(words[2 : len(words)-1])
+				newOp.OperandB, err = Generate(words[2:len(words)-1], localVars)
 				if err != nil {
 					return nil, err
 				}
@@ -311,13 +322,37 @@ func Generate(words []utils.Word) (*Operator, error) {
 
 		if newOp.Type == OP_DECLFUNC {
 			// Function declaration operator
-			if minPriorityIndex < 1 {
+			if minPriorityIndex < 3 {
 				return nil, fmt.Errorf("missing a function declaration on left side of operator '%s'", minPriorityWord.Literal)
 			} else if minPriorityIndex >= len(words)-1 {
 				return nil, fmt.Errorf("missing a function bidy on right side of operator '%s'", minPriorityWord.Literal)
 			}
+
+			// Find brackets to determine arguments
+			bracketsCount = 0
+			lastBracketIndex := -1
+			if words[1].Literal != "(" {
+				return nil, fmt.Errorf("wrong function declaration syntax, missing '('")
+			} else {
+				for i := 1; i < minPriorityIndex; i++ {
+					if words[i].Type == utils.W_CTL {
+						if words[i].Literal == "(" {
+							bracketsCount++
+						} else {
+							lastBracketIndex = i
+							bracketsCount--
+						}
+					} else {
+						continue
+					}
+				}
+				if bracketsCount > 0 || lastBracketIndex < 0 {
+					return nil, fmt.Errorf("wrong function declaration syntax, missing ')'")
+				}
+			}
+
 			newOp.OperandA = &Operator{
-				Result: words[:minPriorityIndex],
+				Result: words[:lastBracketIndex+1],
 			}
 			newOp.OperandB = &Operator{
 				Result: words[minPriorityIndex+1:],
@@ -341,12 +376,12 @@ func Generate(words []utils.Word) (*Operator, error) {
 				Result: lit,
 			}
 		} else {
-			newOp.OperandA, err = Generate(words[:minPriorityIndex])
+			newOp.OperandA, err = Generate(words[:minPriorityIndex], localVars)
 			if err != nil {
 				return nil, err
 			}
 		}
-		newOp.OperandB, err = Generate(words[minPriorityIndex+1:])
+		newOp.OperandB, err = Generate(words[minPriorityIndex+1:], localVars)
 		if err != nil {
 			return nil, err
 		}
@@ -380,9 +415,12 @@ func Calculate(op *Operator) (interface{}, error) {
 	switch op.Type {
 	case OP_DECLFUNC:
 		leftSideWords := op.OperandA.Result.([]utils.Word)
-		// rightSideWords := op.OperandB.Result.([]utils.Word)
+		rightSideWords := op.OperandB.Result.([]utils.Word)
 		funcName := leftSideWords[0].Literal
-		newFunc := user.FuncVariant{}
+		newFunc := user.FuncVariant{
+			Args: leftSideWords[2 : len(leftSideWords)-1],
+			Body: rightSideWords,
+		}
 		user.SetFunctionVariant(funcName, newFunc)
 	case OP_ASSIGN:
 		user.SetVariable(op.OperandA.Result.(string), op.OperandB.Result)
@@ -465,15 +503,69 @@ func Calculate(op *Operator) (interface{}, error) {
 		}
 		op.Result = append(op.OperandA.Result.([]interface{}), op.OperandB.Result.([]interface{})...)
 	case OP_BUILTINFUNC:
+		f, _ := builtin.GetFunction(op.OperandA.Result.(string))
+
 		switch op.OperandB.Result.(type) {
 		case []interface{}:
-			f, _ := builtin.GetFunction(op.OperandA.Result.(string))
 			op.Result, err = f.Exec(op.OperandB.Result.([]interface{})...)
 		default:
-			f, _ := builtin.GetFunction(op.OperandA.Result.(string))
 			op.Result, err = f.Exec(op.OperandB.Result)
 		}
 	case OP_USERFUNC:
+		var args []interface{}
+		f, _ := user.GetFunction(op.OperandA.Result.(string))
+
+		switch op.OperandB.Result.(type) {
+		case []interface{}:
+			args = op.OperandB.Result.([]interface{})
+		default:
+			args = []interface{}{op.OperandB.Result}
+		}
+
+		for _, variant := range f.Variants {
+			argNames := variant.ArgNames()
+			if len(argNames) != len(args) {
+				continue
+			}
+			argMap := make(map[string]interface{})
+			for pos, name := range argNames {
+				argMap[name] = args[pos]
+			}
+			argOperators, err := Generate(variant.Args, &argMap)
+			if err != nil {
+				continue
+			}
+			result, err := Calculate(argOperators)
+			if err != nil {
+				continue
+			}
+
+			argsCompatible := true
+
+			switch r := result.(type) {
+			case []interface{}:
+				for _, val := range r {
+					if !utils.ToBool(val) {
+						argsCompatible = false
+						break
+					}
+				}
+			default:
+				argsCompatible = utils.ToBool(r)
+			}
+
+			if !argsCompatible {
+				continue
+			}
+			bodyOperators, err := Generate(variant.Body, &argMap)
+			if err != nil {
+				op.Result = nil
+				return op.Result, err
+			}
+
+			return Calculate(bodyOperators)
+		}
+
 		op.Result = 0
 	}
 

@@ -185,6 +185,9 @@ func vars(args ...interface{}) (interface{}, error) {
 	if len(constants) > 0 {
 		fmt.Printf("\n\tBuiltin constants:\n")
 		for key, value := range constants {
+			if key == "help" {
+				continue
+			}
 			fmt.Printf("\t\t[%s] = %v\n", key, value)
 		}
 	} else {
@@ -204,7 +207,10 @@ func funcs(args ...interface{}) (interface{}, error) {
 	if funcsCount > 0 {
 		fmt.Printf("\n\tUser functions:\n")
 		for key, value := range userFuncs {
-			fmt.Printf("\t\t[%s] = %v\n", key, value)
+			fmt.Printf("\t\t%-8s%s\n", key, value.Variants[0])
+			for v := 1; v < len(value.Variants); v++ {
+				fmt.Printf("\t\t\t%s\n", value.Variants[v])
+			}
 		}
 	} else {
 		fmt.Printf("\n\tThere are no user defined functions.\n")
@@ -227,7 +233,7 @@ func save(args ...interface{}) (interface{}, error) {
 		fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to get user home directory\n", envID)
 		return 0, nil
 	}
-	saveDir := fmt.Sprintf("%s/.pcalc/environment", userDir)
+	saveDir := fmt.Sprintf("%s/.hexowl/environment", userDir)
 	err = os.MkdirAll(saveDir, 0666)
 	if err != nil {
 		fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create save directory\n", envID)
@@ -259,7 +265,7 @@ func load(args ...interface{}) (interface{}, error) {
 		fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to get user home directory\n", envID)
 		return 0, nil
 	}
-	loadPath := fmt.Sprintf("%s/.pcalc/environment/0x%016X.json", userDir, envID)
+	loadPath := fmt.Sprintf("%s/.hexowl/environment/0x%016X.json", userDir, envID)
 	loadData := saveStruct{}
 	loadBuffer, err := os.ReadFile(loadPath)
 	if err != nil {

@@ -23,7 +23,7 @@ type Func struct {
 }
 type FuncMap map[string]Func
 
-var Functions = FuncMap{
+var functions = FuncMap{
 	"sin": Func{
 		Args: "(x)",
 		Desc: "Sine of the radian argument x",
@@ -73,6 +73,11 @@ var Functions = FuncMap{
 		Args: "()",
 		Desc: "List available variables",
 		Exec: vars,
+	},
+	"clvars": Func{
+		Args: "()",
+		Desc: "Delete user defined variables",
+		Exec: clearVars,
 	},
 	"funcs": Func{
 		Args: "()",
@@ -167,18 +172,19 @@ func popcount(args ...interface{}) (interface{}, error) {
 }
 
 func vars(args ...interface{}) (interface{}, error) {
-	varsCount := uint64(len(user.Functions))
+	userVars := user.ListVariables()
+	varsCount := uint64(len(userVars))
 	if varsCount > 0 {
 		fmt.Printf("\n\tUser variables:\n")
-		for key, value := range user.Functions {
+		for key, value := range userVars {
 			fmt.Printf("\t\t[%s] = %v\n", key, value)
 		}
 	} else {
 		fmt.Printf("\n\tThere are no user defined variables.\n")
 	}
-	if len(Constants) > 0 {
+	if len(constants) > 0 {
 		fmt.Printf("\n\tBuiltin constants:\n")
-		for key, value := range Constants {
+		for key, value := range constants {
 			fmt.Printf("\t\t[%s] = %v\n", key, value)
 		}
 	} else {
@@ -187,11 +193,17 @@ func vars(args ...interface{}) (interface{}, error) {
 	return varsCount, nil
 }
 
+func clearVars(args ...interface{}) (interface{}, error) {
+	user.DropVariables()
+	return uint64(0), nil
+}
+
 func funcs(args ...interface{}) (interface{}, error) {
-	funcsCount := uint64(len(user.Functions))
+	userFuncs := user.ListFunctions()
+	funcsCount := uint64(len(userFuncs))
 	if funcsCount > 0 {
 		fmt.Printf("\n\tUser functions:\n")
-		for key, value := range user.Functions {
+		for key, value := range userFuncs {
 			fmt.Printf("\t\t[%s] = %v\n", key, value)
 		}
 	} else {
@@ -223,8 +235,8 @@ func save(args ...interface{}) (interface{}, error) {
 	}
 	savePath := fmt.Sprintf("%s/0x%016X.json", saveDir, envID)
 	saveData := saveStruct{
-		UserVars:  user.Variables,
-		UserFuncs: user.Functions,
+		UserVars:  user.ListVariables(),
+		UserFuncs: user.ListFunctions(),
 	}
 	saveJson, err := json.Marshal(saveData)
 	if err != nil {
@@ -259,8 +271,14 @@ func load(args ...interface{}) (interface{}, error) {
 		fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to parse environment data\n", envID)
 		return 0, nil
 	}
-	user.Variables = loadData.UserVars
-	user.Functions = loadData.UserFuncs
+	user.DropVariables()
+	for name, val := range loadData.UserVars {
+		user.SetVariable(name, val)
+	}
+	user.DropFunctions()
+	for name, val := range loadData.UserFuncs {
+		user.SetFunction(name, val)
+	}
 	fmt.Printf("\n\tEnvironment 0x%016X loaded\n", envID)
 	return uint64(1), nil
 }
@@ -277,5 +295,19 @@ func exit(args ...interface{}) (interface{}, error) {
 }
 
 func FuncsInit() {
-	bFuncs = &Functions
+	bFuncs = &functions
+}
+
+func HasFunction(name string) bool {
+	_, found := functions[name]
+	return found
+}
+
+func GetFunction(name string) (function Func, found bool) {
+	function, found = functions[name]
+	return
+}
+
+func ListFunctions() map[string]Func {
+	return functions
 }

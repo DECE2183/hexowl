@@ -1,12 +1,121 @@
 package utils
 
-import "math"
+import (
+	"math"
+	"strings"
+)
 
-type Number interface {
+const (
+	stringLiterals   = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
+	decLiterals      = "0123456789."
+	hexLiterals      = "0123456789ABCDEFabcdef"
+	binLiterals      = "01"
+	controlLiterals  = "()"
+	operatorLiterals = "#?=-+*/%^!&|~<>,"
+)
+
+type wordType int
+
+// Word types
+const (
+	W_NONE    wordType = iota
+	W_NUM_DEC wordType = iota
+	W_NUM_HEX wordType = iota
+	W_NUM_BIN wordType = iota
+	W_STR     wordType = iota
+	W_OP      wordType = iota
+	W_CTL     wordType = iota
+	W_FUNC    wordType = iota
+)
+
+type Word struct {
+	Type    wordType
+	Literal string
+}
+
+func ParsePromt(str string) []Word {
+	words := make([]Word, 0)
+
+	wordType := W_NUM_DEC
+	wordDone := false
+
+	wordBegin := -1
+	for i, c := range str {
+		if wordBegin > -1 {
+			switch wordType {
+			case W_STR:
+				if !(strings.Contains(stringLiterals, string(c)) || strings.Contains(decLiterals, string(c))) {
+					wordDone = true
+				}
+			case W_NUM_DEC, W_NUM_HEX, W_NUM_BIN:
+				if (c == 'x' || c == 'b') && i-wordBegin == 1 {
+					if c == 'x' {
+						wordType = W_NUM_HEX
+					} else {
+						wordType = W_NUM_BIN
+					}
+					wordBegin += 2
+				} else {
+					switch wordType {
+					case W_NUM_DEC:
+						if !strings.Contains(decLiterals, string(c)) {
+							wordDone = true
+						}
+					case W_NUM_HEX:
+						if !strings.Contains(hexLiterals, string(c)) {
+							wordDone = true
+						}
+					case W_NUM_BIN:
+						if !strings.Contains(binLiterals, string(c)) {
+							wordDone = true
+						}
+					}
+				}
+			case W_CTL:
+				wordDone = true
+			case W_OP:
+				if !strings.Contains(operatorLiterals, string(c)) {
+					wordDone = true
+				}
+			}
+
+			if wordDone && wordType != W_NONE {
+				words = append(words, Word{wordType, str[wordBegin:i]})
+				wordBegin = -1
+			}
+		}
+
+		if wordBegin < 0 {
+			wordBegin = i
+			wordDone = false
+
+			if strings.Contains(stringLiterals, string(c)) {
+				wordType = W_STR
+			} else if strings.Contains(decLiterals, string(c)) {
+				wordType = W_NUM_DEC
+			} else if strings.Contains(controlLiterals, string(c)) {
+				wordType = W_CTL
+			} else if strings.Contains(operatorLiterals, string(c)) {
+				wordType = W_OP
+			} else {
+				wordBegin = -1
+				wordType = W_NONE
+			}
+		}
+	}
+
+	if wordBegin > -1 && wordType != W_NONE {
+		words = append(words, Word{wordType, str[wordBegin:]})
+	}
+
+	return words
+}
+
+type number interface {
 	int64 | uint64 | float64
 }
 
-func ToNumber[T Number](i interface{}) T {
+func ToNumber[T number](i interface{}) T {
 	switch v := i.(type) {
 	case bool:
 		if v {

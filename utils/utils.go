@@ -44,24 +44,20 @@ func ToBool(i interface{}) bool {
 	switch v := i.(type) {
 	case bool:
 		return v
+	case string:
+		return len(v) > 0
+	case byte:
+		return v > 0
+	case int:
+		return v > 0
+	case uint:
+		return v > 0
 	case int64:
-		if v > 0 {
-			return true
-		} else {
-			return false
-		}
+		return v > 0
 	case uint64:
-		if v > 0 {
-			return true
-		} else {
-			return false
-		}
+		return v > 0
 	case float64:
-		if v > 0 {
-			return true
-		} else {
-			return false
-		}
+		return v > 0
 	}
 
 	return false

@@ -82,30 +82,37 @@ type OperatorType int
 const (
 	OP_NONE OperatorType = iota
 
-	OP_ASSIGN      OperatorType = iota
-	OP_DECREMENT   OperatorType = iota
-	OP_INCREMENT   OperatorType = iota
-	OP_ASSIGNMUL   OperatorType = iota
-	OP_ASSIGNDIV   OperatorType = iota
-	OP_LOGICNOT    OperatorType = iota
-	OP_LOGICOR     OperatorType = iota
-	OP_LOGICAND    OperatorType = iota
-	OP_EQUALITY    OperatorType = iota
-	OP_NOTEQUALITY OperatorType = iota
-	OP_MINUS       OperatorType = iota
-	OP_PLUS        OperatorType = iota
-	OP_MULTIPLY    OperatorType = iota
-	OP_DIVIDE      OperatorType = iota
-	OP_MODULO      OperatorType = iota
-	OP_POWER       OperatorType = iota
-	OP_LEFTSHIFT   OperatorType = iota
-	OP_RIGHTSHIFT  OperatorType = iota
-	OP_BITOR       OperatorType = iota
-	OP_BITAND      OperatorType = iota
-	OP_BITXOR      OperatorType = iota
-	OP_BITCLEAR    OperatorType = iota
-	OP_BITINVERSE  OperatorType = iota
-	OP_POPCNT      OperatorType = iota
+	OP_ASSIGN    OperatorType = iota
+	OP_DECREMENT OperatorType = iota
+	OP_INCREMENT OperatorType = iota
+	OP_ASSIGNMUL OperatorType = iota
+	OP_ASSIGNDIV OperatorType = iota
+
+	OP_LOGICNOT OperatorType = iota
+	OP_LOGICOR  OperatorType = iota
+	OP_LOGICAND OperatorType = iota
+	OP_EQUALITY OperatorType = iota
+	OP_NOTEQ    OperatorType = iota
+	OP_MORE     OperatorType = iota
+	OP_LESS     OperatorType = iota
+	OP_MOREEQ   OperatorType = iota
+	OP_LESSEQ   OperatorType = iota
+
+	OP_MINUS    OperatorType = iota
+	OP_PLUS     OperatorType = iota
+	OP_MULTIPLY OperatorType = iota
+	OP_DIVIDE   OperatorType = iota
+	OP_MODULO   OperatorType = iota
+	OP_POWER    OperatorType = iota
+
+	OP_LEFTSHIFT  OperatorType = iota
+	OP_RIGHTSHIFT OperatorType = iota
+	OP_BITOR      OperatorType = iota
+	OP_BITAND     OperatorType = iota
+	OP_BITXOR     OperatorType = iota
+	OP_BITCLEAR   OperatorType = iota
+	OP_BITINVERSE OperatorType = iota
+	OP_POPCNT     OperatorType = iota
 
 	OP_FUNCARGSEP  OperatorType = iota
 	OP_USERFUNC    OperatorType = iota
@@ -126,7 +133,7 @@ type Operator struct {
 
 var (
 	operatorsPriorityList = [...]string{
-		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "!", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
+		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", ">", "<", ">=", "<=", "||", "&&", "!", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
 	}
 )
 
@@ -313,8 +320,16 @@ func calcOperator(op *Operator) (interface{}, error) {
 		op.Result = utils.ToBool(op.OperandA.Result) && utils.ToBool(op.OperandB.Result)
 	case OP_EQUALITY:
 		op.Result = utils.ToNumber[uint64](op.OperandA.Result) == utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_NOTEQUALITY:
+	case OP_NOTEQ:
 		op.Result = utils.ToNumber[uint64](op.OperandA.Result) != utils.ToNumber[uint64](op.OperandB.Result)
+	case OP_MORE:
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) > utils.ToNumber[uint64](op.OperandB.Result)
+	case OP_LESS:
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) < utils.ToNumber[uint64](op.OperandB.Result)
+	case OP_MOREEQ:
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) >= utils.ToNumber[uint64](op.OperandB.Result)
+	case OP_LESSEQ:
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) <= utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_MINUS:
 		op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
 	case OP_PLUS:
@@ -602,7 +617,15 @@ func getOperatorType(op string) OperatorType {
 	case "==":
 		return OP_EQUALITY
 	case "!=":
-		return OP_NOTEQUALITY
+		return OP_NOTEQ
+	case ">":
+		return OP_MORE
+	case "<":
+		return OP_LESS
+	case ">=":
+		return OP_MOREEQ
+	case "<=":
+		return OP_LESSEQ
 	case "-":
 		return OP_MINUS
 	case "+":

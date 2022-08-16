@@ -53,8 +53,12 @@ go build
 |Logical NOT        |`!`        |
 |Logical AND        |`&&`       |
 |Logical OR         |`\|\|`     |
-|Logical not equal  |`!=`       |
-|Logical equal      |`==`       |
+|Less or equal      |`<=`       |
+|More or equal      |`>=`       |
+|Less               |`<`        |
+|More               |`>`        |
+|Not equal          |`!=`       |
+|Equal              |`==`       |
 |Argument iterator  |`,`        |
 |Divide and assign  |`/=`       |
 |Mutiply and assign |`*=`       |
@@ -83,8 +87,9 @@ go build
 |`cos(x)`           |Cosine                                     |
 |`pow(x,y)`         |Exponentiation                             |
 |`sqrt(x)`          |Square root                                |
-|`ceil(x)`          |The least integer value >= x               |
-|`floor(x)`         |The greatest integer value <= x            |
+|`exp(x)`           |The base-e exponential                     |
+|`ceil(x)`          |The least integer value >= `x`             |
+|`floor(x)`         |The greatest integer value <= `x`          |
 |`popcnt(x)`        |Positive bits count                        |
 |`vars()`           |List built in and user defined variables   |
 |`funcs()`          |List alailable functions                   |

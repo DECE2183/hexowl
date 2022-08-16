@@ -448,17 +448,17 @@ func Calculate(op *Operator) (interface{}, error) {
 	case OP_LOGICAND:
 		op.Result = utils.ToBool(op.OperandA.Result) && utils.ToBool(op.OperandB.Result)
 	case OP_EQUALITY:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) == utils.ToNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) == utils.ToNumber[float64](op.OperandB.Result)
 	case OP_NOTEQ:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) != utils.ToNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) != utils.ToNumber[float64](op.OperandB.Result)
 	case OP_MORE:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) > utils.ToNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) > utils.ToNumber[float64](op.OperandB.Result)
 	case OP_LESS:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) < utils.ToNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) < utils.ToNumber[float64](op.OperandB.Result)
 	case OP_MOREEQ:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) >= utils.ToNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) >= utils.ToNumber[float64](op.OperandB.Result)
 	case OP_LESSEQ:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) <= utils.ToNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) <= utils.ToNumber[float64](op.OperandB.Result)
 	case OP_MINUS:
 		op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
 	case OP_PLUS:
@@ -545,13 +545,25 @@ func Calculate(op *Operator) (interface{}, error) {
 			switch r := result.(type) {
 			case []interface{}:
 				for _, val := range r {
-					if !utils.ToBool(val) {
-						argsCompatible = false
+					switch v := val.(type) {
+					case bool:
+						if !v {
+							argsCompatible = false
+							break
+						}
+					}
+
+					if !argsCompatible {
 						break
 					}
 				}
 			default:
-				argsCompatible = utils.ToBool(r)
+				switch val := r.(type) {
+				case bool:
+					if !val {
+						argsCompatible = false
+					}
+				}
 			}
 
 			if !argsCompatible {
@@ -566,7 +578,8 @@ func Calculate(op *Operator) (interface{}, error) {
 			return Calculate(bodyOperators)
 		}
 
-		op.Result = 0
+		op.Result = nil
+		err = fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", op.OperandA.Result.(string), args)
 	}
 
 	return op.Result, err

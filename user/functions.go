@@ -83,11 +83,11 @@ func (v FuncVariant) ArgNames() (pos []string) {
 }
 
 func (v FuncVariant) String() string {
-	str := ""
+	str := "("
 	for _, lw := range v.Args {
 		str += lw.Literal
 	}
-	str += " -> "
+	str += ") -> "
 	for _, rw := range v.Body {
 		str += rw.Literal
 	}

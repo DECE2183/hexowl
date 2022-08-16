@@ -38,7 +38,7 @@ go build
 |-------------------|-----------|
 |Positive bits count|`#`        |
 |Bitwise NOT        |`~`        |
-|Bitclear (AND NOT) |`&~`, `&^` |
+|Bitclear (AND NOT) |`&~` `&^`  |
 |Bitwise XOR        |`^`        |
 |Bitwise AND        |`&`        |
 |Bitwise OR         |`\|`       |
@@ -48,8 +48,8 @@ go build
 |Division           |`/`        |
 |Exponentiation     |`**`       |
 |Multiplication     |`*`        |
-|Addition           |`+`        |
 |Subtraction        |`-`        |
+|Addition           |`+`        |
 |Logical NOT        |`!`        |
 |Logical AND        |`&&`       |
 |Logical OR         |`\|\|`     |
@@ -67,18 +67,28 @@ go build
 |Constant           |Value              |
 |-------------------|-------------------|
 |`pi`               |`3.141592653589793`|
+|`e`                |`2.718281828459045`|
 |`true`             |`1`                |
 |`false`            |`0`                |
+|`inf`              |`+Inf`             |
+|`nan`              |`NaN`              |
+|`nil`              |`nil`              |
+|`help`             |Help Message       |
 
 ### Built in functions
 
-|Function           |Meaning                            |
-|-------------------|-----------------------------------|
-|`sin(x)`           |Sine                               |
-|`cos(x)`           |Cosine                             |
-|`pow(a,b)`         |Exponentiation                     |
-|`vars()`           |List defined user variables        |
-|`save(id)`         |Save working environment with `id` |
-|`load(id)`         |Load working environment with `id` |
-|`clear()`          |Clear terminal                     |
-|`exit(error_code)` |Exit with error code               |
+|Function           |Meaning                                    |
+|-------------------|-------------------------------------------|
+|`sin(x)`           |Sine                                       |
+|`cos(x)`           |Cosine                                     |
+|`pow(x,y)`         |Exponentiation                             |
+|`sqrt(x)`          |Square root                                |
+|`ceil(x)`          |The least integer value >= x               |
+|`floor(x)`         |The greatest integer value <= x            |
+|`popcnt(x)`        |Positive bits count                        |
+|`vars()`           |List built in and user defined variables   |
+|`funcs()`          |List alailable functions                   |
+|`save(id)`         |Save working environment with `id`         |
+|`load(id)`         |Load working environment with `id`         |
+|`clear()`          |Clear terminal                             |
+|`exit(error_code)` |Exit with error code                       |

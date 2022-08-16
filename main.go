@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/bits"
@@ -10,11 +9,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
 
-type number interface {
-	int64 | uint64 | float64
-}
+	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/user"
+	"github.com/dece2183/hexowl/utils"
+)
 
 const (
 	stringLiterals   = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
@@ -125,141 +124,15 @@ type Operator struct {
 	Result   interface{}
 }
 
-type userFunc map[string]string
-type builtinFunc func(args ...interface{}) (interface{}, error)
-
-type saveStruct struct {
-	UserVars  map[string]interface{}
-	UserFuncs map[string]userFunc
-}
-
 var (
 	operatorsPriorityList = [...]string{
 		"=", "-=", "+=", "*=", "/=", ",", "==", "!=", "||", "&&", "!", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
 	}
 )
 
-var (
-	userVars     = map[string]interface{}{}
-	userFuncs    = map[string]userFunc{}
-	builtinFuncs = map[string]builtinFunc{
-		"sin": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 1 {
-				return nil, fmt.Errorf("not enough arguments")
-			}
-			return math.Sin(toNumber[float64](args[0])), nil
-		},
-		"cos": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 1 {
-				return nil, fmt.Errorf("not enough arguments")
-			}
-			return math.Cos(toNumber[float64](args[0])), nil
-		},
-		"pow": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 2 {
-				return nil, fmt.Errorf("not enough arguments")
-			}
-			return math.Pow(toNumber[float64](args[0]), toNumber[float64](args[1])), nil
-		},
-		"sqrt": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 1 {
-				return nil, fmt.Errorf("not enough arguments")
-			}
-			return math.Sqrt(toNumber[float64](args[0])), nil
-		},
-		"vars": func(args ...interface{}) (interface{}, error) {
-			varsCount := uint64(len(userVars))
-			if varsCount > 0 {
-				fmt.Printf("\n\tUser variables:\n")
-				for key, value := range userVars {
-					fmt.Printf("\t\t[%s] = %v\n", key, value)
-				}
-			} else {
-				fmt.Printf("\n\tThere is no user defined variables.\n")
-			}
-			if len(builtinConstants) > 0 {
-				fmt.Printf("\n\tBuiltin constants:\n")
-				for key, value := range builtinConstants {
-					fmt.Printf("\t\t[%s] = %v\n", key, value)
-				}
-			} else {
-				fmt.Printf("\n\tThere is no builtin constants.\n")
-			}
-			return varsCount, nil
-		},
-		"save": func(args ...interface{}) (interface{}, error) {
-			envID := toNumber[uint64](args[0])
-			userDir, err := os.UserHomeDir()
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to get user home directory\n", envID)
-				return 0, nil
-			}
-			saveDir := fmt.Sprintf("%s/.pcalc/environment", userDir)
-			err = os.MkdirAll(saveDir, 0666)
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create save directory\n", envID)
-				return 0, nil
-			}
-			savePath := fmt.Sprintf("%s/0x%016X.json", saveDir, envID)
-			saveData := saveStruct{
-				UserVars:  userVars,
-				UserFuncs: userFuncs,
-			}
-			saveJson, err := json.Marshal(saveData)
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create data\n", envID)
-				return 0, nil
-			}
-			err = os.WriteFile(savePath, saveJson, 0666)
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to write file\n", envID)
-				return 0, nil
-			}
-			fmt.Printf("\n\tSaving environment as 0x%016X\n", envID)
-			return uint64(1), nil
-		},
-		"load": func(args ...interface{}) (interface{}, error) {
-			envID := toNumber[uint64](args[0])
-			userDir, err := os.UserHomeDir()
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to get user home directory\n", envID)
-				return 0, nil
-			}
-			loadPath := fmt.Sprintf("%s/.pcalc/environment/0x%016X.json", userDir, envID)
-			loadData := saveStruct{}
-			loadBuffer, err := os.ReadFile(loadPath)
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X load failed: environment doesn't exists\n", envID)
-				return 0, nil
-			}
-			err = json.Unmarshal(loadBuffer, &loadData)
-			if err != nil {
-				fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to parse environment data\n", envID)
-				return 0, nil
-			}
-			userVars = loadData.UserVars
-			userFuncs = loadData.UserFuncs
-			fmt.Printf("\n\tEnvironment 0x%016X loaded\n", envID)
-			return uint64(1), nil
-		},
-		"clear": func(args ...interface{}) (interface{}, error) {
-			fmt.Printf("\x1bc")
-			return nil, nil
-		},
-		"exit": func(args ...interface{}) (interface{}, error) {
-			exitCode := toNumber[int64](args[0])
-			os.Exit(int(exitCode))
-			return exitCode, nil
-		},
-	}
-	builtinConstants = map[string]interface{}{
-		"pi":    math.Pi,
-		"true":  true,
-		"false": false,
-	}
-)
-
 func main() {
+	builtin.FuncsInit()
+
 	var words []Word
 	stdreader := bufio.NewReader(os.Stdin)
 
@@ -280,7 +153,7 @@ func main() {
 }
 
 func promt(reader *bufio.Reader) []Word {
-	// return parse("abs(x) = ")
+	// return parse("help + 0")
 	var input string
 
 	fmt.Printf(">: ")
@@ -379,9 +252,16 @@ func calculate(words []Word) error {
 	}
 
 	if val != nil {
-		fmt.Printf("\n\tResult:\t%v\r\n", toNumber[float64](val))
-		fmt.Printf("\t\t0x%X\r\n", toNumber[uint64](val))
-		fmt.Printf("\t\t0b%b\r\n", toNumber[uint64](val))
+		switch v := val.(type) {
+		case string:
+			fmt.Printf("\n\t%s\r\n", v)
+		case bool:
+			fmt.Printf("\n\tResult:\t%v\r\n", v)
+		default:
+			fmt.Printf("\n\tResult:\t%v\r\n", utils.ToNumber[float64](val))
+			fmt.Printf("\t\t0x%X\r\n", utils.ToNumber[uint64](val))
+			fmt.Printf("\t\t0b%b\r\n", utils.ToNumber[uint64](val))
+		}
 	}
 
 	return nil
@@ -411,58 +291,58 @@ func calcOperator(op *Operator) (interface{}, error) {
 
 	switch op.Type {
 	case OP_ASSIGN:
-		userVars[op.OperandA.Result.(string)] = op.OperandB.Result
+		user.Variables[op.OperandA.Result.(string)] = op.OperandB.Result
 		op.Result = op.OperandB.Result
 	case OP_DECREMENT:
-		op.Result = toNumber[float64](userVars[op.OperandA.Result.(string)]) - toNumber[float64](op.OperandB.Result)
-		userVars[op.OperandA.Result.(string)] = op.Result
+		op.Result = utils.ToNumber[float64](user.Variables[op.OperandA.Result.(string)]) - utils.ToNumber[float64](op.OperandB.Result)
+		user.Variables[op.OperandA.Result.(string)] = op.Result
 	case OP_INCREMENT:
-		op.Result = toNumber[float64](userVars[op.OperandA.Result.(string)]) + toNumber[float64](op.OperandB.Result)
-		userVars[op.OperandA.Result.(string)] = op.Result
+		op.Result = utils.ToNumber[float64](user.Variables[op.OperandA.Result.(string)]) + utils.ToNumber[float64](op.OperandB.Result)
+		user.Variables[op.OperandA.Result.(string)] = op.Result
 	case OP_ASSIGNMUL:
-		op.Result = toNumber[float64](userVars[op.OperandA.Result.(string)]) * toNumber[float64](op.OperandB.Result)
-		userVars[op.OperandA.Result.(string)] = op.Result
+		op.Result = utils.ToNumber[float64](user.Variables[op.OperandA.Result.(string)]) * utils.ToNumber[float64](op.OperandB.Result)
+		user.Variables[op.OperandA.Result.(string)] = op.Result
 	case OP_ASSIGNDIV:
-		op.Result = toNumber[float64](userVars[op.OperandA.Result.(string)]) / toNumber[float64](op.OperandB.Result)
-		userVars[op.OperandA.Result.(string)] = op.Result
+		op.Result = utils.ToNumber[float64](user.Variables[op.OperandA.Result.(string)]) / utils.ToNumber[float64](op.OperandB.Result)
+		user.Variables[op.OperandA.Result.(string)] = op.Result
 	case OP_LOGICNOT:
-		op.Result = !toBool(op.OperandB.Result)
+		op.Result = !utils.ToBool(op.OperandB.Result)
 	case OP_LOGICOR:
-		op.Result = toBool(op.OperandA.Result) || toBool(op.OperandB.Result)
+		op.Result = utils.ToBool(op.OperandA.Result) || utils.ToBool(op.OperandB.Result)
 	case OP_LOGICAND:
-		op.Result = toBool(op.OperandA.Result) && toBool(op.OperandB.Result)
+		op.Result = utils.ToBool(op.OperandA.Result) && utils.ToBool(op.OperandB.Result)
 	case OP_EQUALITY:
-		op.Result = toNumber[uint64](op.OperandA.Result) == toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) == utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_NOTEQUALITY:
-		op.Result = toNumber[uint64](op.OperandA.Result) != toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) != utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_MINUS:
-		op.Result = toNumber[float64](op.OperandA.Result) - toNumber[float64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
 	case OP_PLUS:
-		op.Result = toNumber[float64](op.OperandA.Result) + toNumber[float64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) + utils.ToNumber[float64](op.OperandB.Result)
 	case OP_MULTIPLY:
-		op.Result = toNumber[float64](op.OperandA.Result) * toNumber[float64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
 	case OP_DIVIDE:
-		op.Result = toNumber[float64](op.OperandA.Result) / toNumber[float64](op.OperandB.Result)
+		op.Result = utils.ToNumber[float64](op.OperandA.Result) / utils.ToNumber[float64](op.OperandB.Result)
 	case OP_MODULO:
-		op.Result = toNumber[int64](op.OperandA.Result) % toNumber[int64](op.OperandB.Result)
+		op.Result = utils.ToNumber[int64](op.OperandA.Result) % utils.ToNumber[int64](op.OperandB.Result)
 	case OP_POWER:
-		op.Result = math.Pow(toNumber[float64](op.OperandA.Result), toNumber[float64](op.OperandB.Result))
+		op.Result = math.Pow(utils.ToNumber[float64](op.OperandA.Result), utils.ToNumber[float64](op.OperandB.Result))
 	case OP_LEFTSHIFT:
-		op.Result = toNumber[uint64](op.OperandA.Result) << toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) << utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_RIGHTSHIFT:
-		op.Result = toNumber[uint64](op.OperandA.Result) >> toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) >> utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_BITOR:
-		op.Result = toNumber[uint64](op.OperandA.Result) | toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) | utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_BITAND:
-		op.Result = toNumber[uint64](op.OperandA.Result) & toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) & utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_BITXOR:
-		op.Result = toNumber[uint64](op.OperandA.Result) ^ toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) ^ utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_BITCLEAR:
-		op.Result = toNumber[uint64](op.OperandA.Result) &^ toNumber[uint64](op.OperandB.Result)
+		op.Result = utils.ToNumber[uint64](op.OperandA.Result) &^ utils.ToNumber[uint64](op.OperandB.Result)
 	case OP_POPCNT:
-		op.Result = uint64(bits.OnesCount64(toNumber[uint64](op.OperandB.Result)))
+		op.Result = uint64(bits.OnesCount64(utils.ToNumber[uint64](op.OperandB.Result)))
 	case OP_BITINVERSE:
-		op.Result = 0xFFFFFFFFFFFFFFFF ^ toNumber[uint64](op.OperandB.Result)
+		op.Result = 0xFFFFFFFFFFFFFFFF ^ utils.ToNumber[uint64](op.OperandB.Result)
 
 	case OP_FUNCARGSEP:
 		switch op.OperandA.Result.(type) {
@@ -481,9 +361,9 @@ func calcOperator(op *Operator) (interface{}, error) {
 	case OP_BUILTINFUNC:
 		switch op.OperandB.Result.(type) {
 		case []interface{}:
-			op.Result, err = builtinFuncs[op.OperandA.Result.(string)](op.OperandB.Result.([]interface{})...)
+			op.Result, err = builtin.Functions[op.OperandA.Result.(string)].Exec(op.OperandB.Result.([]interface{})...)
 		default:
-			op.Result, err = builtinFuncs[op.OperandA.Result.(string)](op.OperandB.Result)
+			op.Result, err = builtin.Functions[op.OperandA.Result.(string)].Exec(op.OperandB.Result)
 		}
 	case OP_USERFUNC:
 		op.Result = 0
@@ -492,10 +372,10 @@ func calcOperator(op *Operator) (interface{}, error) {
 	return op.Result, err
 }
 
-func tryGetVar(literal string) (val interface{}, found bool) {
-	val, found = userVars[literal]
+func getVariable(literal string) (val interface{}, found bool) {
+	val, found = user.Variables[literal]
 	if !found {
-		val, found = builtinConstants[literal]
+		val, found = builtin.Constants[literal]
 	}
 	return
 }
@@ -512,7 +392,7 @@ func generateOperators(words []Word) (*Operator, error) {
 		switch w.Type {
 		case W_STR:
 			// Try to find variable
-			val, found := tryGetVar(w.Literal)
+			val, found := getVariable(w.Literal)
 			if !found {
 				return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
 			}
@@ -520,13 +400,13 @@ func generateOperators(words []Word) (*Operator, error) {
 
 		case W_FUNC:
 			// Try to find function
-			_, found := userFuncs[w.Literal]
+			_, found := user.Functions[w.Literal]
 			if found {
 				newOp.Type = OP_USERFUNC
 				newOp.Result = w.Literal
 				break
 			}
-			_, found = builtinFuncs[w.Literal]
+			_, found = builtin.Functions[w.Literal]
 			if found {
 				newOp.Type = OP_BUILTINFUNC
 				newOp.Result = w.Literal
@@ -677,7 +557,7 @@ func generateOperators(words []Word) (*Operator, error) {
 			}
 			lit := words[minPriorityIndex-1].Literal
 			if newOp.Type > OP_ASSIGN {
-				if userVars[lit] == nil {
+				if user.Variables[lit] == nil {
 					return nil, fmt.Errorf("there is no variable named '%s'", lit)
 				}
 			}
@@ -754,50 +634,4 @@ func getOperatorType(op string) OperatorType {
 	default:
 		return -1
 	}
-}
-
-func toNumber[T number](i interface{}) T {
-	switch v := i.(type) {
-	case bool:
-		if v {
-			return T(1)
-		} else {
-			return T(0)
-		}
-	case int64:
-		return T(v)
-	case uint64:
-		return T(v)
-	case float64:
-		return T(v)
-	}
-
-	return T(0)
-}
-
-func toBool(i interface{}) bool {
-	switch v := i.(type) {
-	case bool:
-		return v
-	case int64:
-		if v > 0 {
-			return true
-		} else {
-			return false
-		}
-	case uint64:
-		if v > 0 {
-			return true
-		} else {
-			return false
-		}
-	case float64:
-		if v > 0 {
-			return true
-		} else {
-			return false
-		}
-	}
-
-	return false
 }

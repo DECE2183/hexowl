@@ -61,7 +61,7 @@ func calculate(words []utils.Word) error {
 		case bool:
 			fmt.Printf("\n\tResult:\t%v\r\n", v)
 		default:
-			fmt.Printf("\n\tResult:\t%v\r\n", utils.ToNumber[float64](val))
+			fmt.Printf("\n\tResult:\t%v\r\n", val)
 			fmt.Printf("\t\t0x%X\r\n", utils.ToNumber[uint64](val))
 			fmt.Printf("\t\t0b%b\r\n", utils.ToNumber[uint64](val))
 		}

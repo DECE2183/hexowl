@@ -84,6 +84,11 @@ var functions = FuncMap{
 		Desc: "List alailable functions",
 		Exec: funcs,
 	},
+	"clfuncs": Func{
+		Args: "()",
+		Desc: "Delete user defined functions",
+		Exec: clearFuncs,
+	},
 	"save": Func{
 		Args: "(id)",
 		Desc: "Save working environment with id",
@@ -224,6 +229,11 @@ func funcs(args ...interface{}) (interface{}, error) {
 		fmt.Printf("\n\tThere are no builtin functions.\n")
 	}
 	return funcsCount, nil
+}
+
+func clearFuncs(args ...interface{}) (interface{}, error) {
+	user.DropFunctions()
+	return uint64(0), nil
 }
 
 func save(args ...interface{}) (interface{}, error) {

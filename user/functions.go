@@ -67,14 +67,14 @@ func DropFunctions() {
 	}
 }
 
-// func (v Func) Exec(args ...interface{}) (interface{}, error) {
-
-// }
-
 func (v FuncVariant) ArgNames() (pos []string) {
+	argFound := false
 	for _, w := range v.Args {
-		if w.Type == utils.W_STR {
+		if w.Type == utils.W_STR && !argFound {
 			pos = append(pos, w.Literal)
+			argFound = true
+		} else if w.Type == utils.W_OP && w.Literal == "," {
+			argFound = false
 		} else {
 			continue
 		}

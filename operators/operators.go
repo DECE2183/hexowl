@@ -85,6 +85,84 @@ func getVariable(literal string) (val interface{}, found bool) {
 	return
 }
 
+func execUserFunc(name string, args []interface{}) (result interface{}, err error) {
+	f, _ := user.GetFunction(name)
+
+	for _, variant := range f.Variants {
+		argsLen := len(args)
+		argNames := variant.ArgNames()
+		argNamesLen := len(argNames)
+		if argNamesLen != argsLen {
+			if argNamesLen == 0 {
+				if argsLen > 1 || args[0] != nil {
+					continue
+				}
+			} else if argsLen < argNamesLen || argNames[argNamesLen-1] != "@" {
+				continue
+			}
+		}
+		argMap := make(map[string]interface{})
+		for pos, name := range argNames {
+			if name == "@" {
+				argMap[name] = args[pos:]
+				break
+			} else {
+				argMap[name] = args[pos]
+			}
+		}
+		argOperators, err := Generate(variant.Args, &argMap)
+		if err != nil {
+			continue
+		}
+		result, err := Calculate(argOperators)
+		if err != nil {
+			continue
+		}
+
+		argsCompatible := true
+
+		switch r := result.(type) {
+		case []interface{}:
+			for _, val := range r {
+				switch v := val.(type) {
+				case bool:
+					if !v {
+						argsCompatible = false
+						break
+					}
+				}
+
+				if !argsCompatible {
+					break
+				}
+			}
+		default:
+			switch val := r.(type) {
+			case bool:
+				if !val {
+					argsCompatible = false
+				}
+			}
+		}
+
+		if !argsCompatible {
+			continue
+		}
+		bodyOperators, err := Generate(variant.Body, &argMap)
+		if err != nil {
+			result = nil
+			return result, err
+		}
+
+		return Calculate(bodyOperators)
+	}
+
+	result = nil
+	err = fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", name, args)
+
+	return
+}
+
 func GetType(op string) operatorType {
 	switch op {
 	case "->":
@@ -513,7 +591,6 @@ func Calculate(op *Operator) (interface{}, error) {
 		}
 	case OP_USERFUNC:
 		var args []interface{}
-		f, _ := user.GetFunction(op.OperandA.Result.(string))
 
 		switch op.OperandB.Result.(type) {
 		case []interface{}:
@@ -522,64 +599,7 @@ func Calculate(op *Operator) (interface{}, error) {
 			args = []interface{}{op.OperandB.Result}
 		}
 
-		for _, variant := range f.Variants {
-			argNames := variant.ArgNames()
-			if len(argNames) != len(args) {
-				continue
-			}
-			argMap := make(map[string]interface{})
-			for pos, name := range argNames {
-				argMap[name] = args[pos]
-			}
-			argOperators, err := Generate(variant.Args, &argMap)
-			if err != nil {
-				continue
-			}
-			result, err := Calculate(argOperators)
-			if err != nil {
-				continue
-			}
-
-			argsCompatible := true
-
-			switch r := result.(type) {
-			case []interface{}:
-				for _, val := range r {
-					switch v := val.(type) {
-					case bool:
-						if !v {
-							argsCompatible = false
-							break
-						}
-					}
-
-					if !argsCompatible {
-						break
-					}
-				}
-			default:
-				switch val := r.(type) {
-				case bool:
-					if !val {
-						argsCompatible = false
-					}
-				}
-			}
-
-			if !argsCompatible {
-				continue
-			}
-			bodyOperators, err := Generate(variant.Body, &argMap)
-			if err != nil {
-				op.Result = nil
-				return op.Result, err
-			}
-
-			return Calculate(bodyOperators)
-		}
-
-		op.Result = nil
-		err = fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", op.OperandA.Result.(string), args)
+		op.Result, err = execUserFunc(op.OperandA.Result.(string), args)
 	}
 
 	return op.Result, err

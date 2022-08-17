@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	stringLiterals   = "@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
+	stringLiterals   = "_@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
 	decLiterals      = "0123456789."
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"

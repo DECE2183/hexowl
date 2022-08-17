@@ -51,7 +51,11 @@ const (
 	OP_BITINVERSE operatorType = iota
 	OP_POPCNT     operatorType = iota
 
-	OP_FUNCARGSEP  operatorType = iota
+	OP_FUNCARGSEP operatorType = iota
+
+	OP_LOCALVAR    operatorType = iota
+	OP_USERVAR     operatorType = iota
+	OP_CONSTANT    operatorType = iota
 	OP_USERFUNC    operatorType = iota
 	OP_BUILTINFUNC operatorType = iota
 )
@@ -77,17 +81,7 @@ func getLocalVariable(localVars *map[string]interface{}, literal string) (val in
 	return
 }
 
-func getVariable(literal string) (val interface{}, found bool) {
-	val, found = user.GetVariable(literal)
-	if !found {
-		val, found = builtin.GetConstant(literal)
-	}
-	return
-}
-
-func execUserFunc(name string, args []interface{}) (result interface{}, err error) {
-	f, _ := user.GetFunction(name)
-
+func execUserFunc(f user.Func, args []interface{}, localVars *map[string]interface{}) (result interface{}, err error) {
 	for _, variant := range f.Variants {
 		argsLen := len(args)
 		argNames := variant.ArgNames()
@@ -101,7 +95,14 @@ func execUserFunc(name string, args []interface{}) (result interface{}, err erro
 				continue
 			}
 		}
-		argMap := make(map[string]interface{})
+
+		var argMap map[string]interface{}
+		if localVars != nil {
+			argMap = *localVars
+		} else {
+			argMap = make(map[string]interface{})
+		}
+
 		for pos, name := range argNames {
 			if name == "@" {
 				argMap[name] = args[pos:]
@@ -114,7 +115,7 @@ func execUserFunc(name string, args []interface{}) (result interface{}, err erro
 		if err != nil {
 			continue
 		}
-		result, err := Calculate(argOperators)
+		result, err := Calculate(argOperators, &argMap)
 		if err != nil {
 			continue
 		}
@@ -154,11 +155,11 @@ func execUserFunc(name string, args []interface{}) (result interface{}, err erro
 			return result, err
 		}
 
-		return Calculate(bodyOperators)
+		return Calculate(bodyOperators, &argMap)
 	}
 
 	result = nil
-	err = fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", name, args)
+	err = fmt.Errorf("variation not found")
 
 	return
 }
@@ -242,14 +243,19 @@ func Generate(words []utils.Word, localVars *map[string]interface{}) (*Operator,
 		switch w.Type {
 		case utils.W_STR:
 			// Try to find variable
-			val, found := getLocalVariable(localVars, w.Literal)
-			if !found {
-				val, found = getVariable(w.Literal)
-				if !found {
-					return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
-				}
+			_, found := getLocalVariable(localVars, w.Literal)
+			if found {
+				newOp.Type = OP_LOCALVAR
+				newOp.Result = w.Literal
+			} else if user.HasVariable(w.Literal) {
+				newOp.Type = OP_USERVAR
+				newOp.Result = w.Literal
+			} else if builtin.HasConstant(w.Literal) {
+				newOp.Type = OP_CONSTANT
+				newOp.Result = w.Literal
+			} else {
+				return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
 			}
-			newOp.Result = val
 
 		case utils.W_FUNC:
 			// Try to find function
@@ -468,26 +474,45 @@ func Generate(words []utils.Word, localVars *map[string]interface{}) (*Operator,
 	return newOp, nil
 }
 
-func Calculate(op *Operator) (interface{}, error) {
+func Calculate(op *Operator, localVars *map[string]interface{}) (interface{}, error) {
 	var err error
 
 	if op == nil {
 		return 0, nil
 	}
 
-	if op.Type == OP_NONE {
+	if op.OperandA == nil && op.OperandB == nil {
+		switch op.Type {
+		case OP_NONE:
+			return op.Result, nil
+		case OP_LOCALVAR:
+			op.Result, _ = getLocalVariable(localVars, op.Result.(string))
+		case OP_USERVAR:
+			op.Result, _ = user.GetVariable(op.Result.(string))
+		case OP_CONSTANT:
+			op.Result, _ = builtin.GetConstant(op.Result.(string))
+		case OP_USERFUNC:
+			op.Result, _ = user.GetFunction(op.Result.(string))
+		case OP_BUILTINFUNC:
+			op.Result, _ = builtin.GetFunction(op.Result.(string))
+		default:
+			return nil, fmt.Errorf("missing operands")
+		}
+
 		return op.Result, nil
-	} else if op.OperandA == nil || op.OperandB == nil {
-		return 0, nil
 	}
 
-	op.OperandA.Result, err = Calculate(op.OperandA)
-	if err != nil {
-		return nil, err
+	if op.OperandA != nil {
+		op.OperandA.Result, err = Calculate(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
 	}
-	op.OperandB.Result, err = Calculate(op.OperandB)
-	if err != nil {
-		return nil, err
+	if op.OperandB != nil {
+		op.OperandB.Result, err = Calculate(op.OperandB, localVars)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	switch op.Type {
@@ -580,6 +605,7 @@ func Calculate(op *Operator) (interface{}, error) {
 			op.OperandB.Result = []interface{}{op.OperandB.Result}
 		}
 		op.Result = append(op.OperandA.Result.([]interface{}), op.OperandB.Result.([]interface{})...)
+
 	case OP_BUILTINFUNC:
 		f, _ := builtin.GetFunction(op.OperandA.Result.(string))
 
@@ -591,6 +617,8 @@ func Calculate(op *Operator) (interface{}, error) {
 		}
 	case OP_USERFUNC:
 		var args []interface{}
+		fname := op.OperandA.Result.(string)
+		f, _ := user.GetFunction(fname)
 
 		switch op.OperandB.Result.(type) {
 		case []interface{}:
@@ -599,7 +627,10 @@ func Calculate(op *Operator) (interface{}, error) {
 			args = []interface{}{op.OperandB.Result}
 		}
 
-		op.Result, err = execUserFunc(op.OperandA.Result.(string), args)
+		op.Result, err = execUserFunc(f, args, localVars)
+		if err != nil {
+			return nil, fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", fname, args)
+		}
 	}
 
 	return op.Result, err

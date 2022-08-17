@@ -49,7 +49,7 @@ func calculate(words []utils.Word) error {
 		return err
 	}
 
-	val, err := operators.Calculate(operator)
+	val, err := operators.Calculate(operator, nil)
 	if err != nil {
 		return err
 	}

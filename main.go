@@ -17,7 +17,7 @@ func main() {
 	var words []utils.Word
 	stdreader := bufio.NewReader(os.Stdin)
 
-	// Test promts
+	// Test prompts
 	// calculate(utils.ParsePrompt("x = 2"))
 	// calculate(utils.ParsePrompt("h(a,b) -> a *= b; b + a"))
 	// calculate(utils.ParsePrompt("h(1,2)"))

@@ -486,7 +486,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			}
 
 			if newOp.Type > OP_ASSIGN && newOp.OperandA.Type == OP_NONE {
-				return nil, fmt.Errorf("there is no variable named '%s'", lit)
+				return nil, fmt.Errorf("there is no user variable named '%s'", lit)
 			}
 		} else {
 			newOp.OperandA, err = Generate(words[:minPriorityIndex], localVars)
@@ -505,8 +505,6 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 
 func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 	var err error
-
-	// fmt.Println("operator:", op, "; local vars: ", localVars)
 
 	if op == nil {
 		return nil, nil
@@ -597,6 +595,8 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 			user.SetVariable(op.OperandA.OperandA.Result.(string), op.Result)
 		case OP_LOCALVAR:
 			localVars[op.OperandA.OperandA.Result.(string)] = op.Result
+		default:
+			return nil, fmt.Errorf("tru to assign non user variable")
 		}
 	case OP_LOGICNOT:
 		op.Result = !utils.ToBool(op.OperandB.Result)

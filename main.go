@@ -17,11 +17,6 @@ func main() {
 	var words []utils.Word
 	stdreader := bufio.NewReader(os.Stdin)
 
-	// Test prompts
-	// calculate(utils.ParsePrompt("x = 2"))
-	// calculate(utils.ParsePrompt("h(a,b) -> a *= b; b + a"))
-	// calculate(utils.ParsePrompt("h(1,2)"))
-
 	for {
 		words = prompt(stdreader)
 		if len(words) > 0 {
@@ -48,12 +43,12 @@ func prompt(reader *bufio.Reader) []utils.Word {
 }
 
 func calculate(words []utils.Word) error {
-	operator, err := operators.Generate(words, nil)
+	operator, err := operators.Generate(words, make(map[string]interface{}))
 	if err != nil {
 		return err
 	}
 
-	val, err := operators.Calculate(operator, nil)
+	val, err := operators.Calculate(operator, make(map[string]interface{}))
 	if err != nil {
 		return err
 	}

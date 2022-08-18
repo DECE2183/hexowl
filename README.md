@@ -52,20 +52,22 @@ go build
 |Subtraction        |`-`        |
 |Addition           |`+`        |
 |Logical NOT        |`!`        |
-|Logical AND        |`&&`       |
-|Logical OR         |`\|\|`     |
 |Less or equal      |`<=`       |
 |More or equal      |`>=`       |
 |Less               |`<`        |
 |More               |`>`        |
 |Not equal          |`!=`       |
 |Equal              |`==`       |
+|Logical AND        |`&&`       |
+|Logical OR         |`\|\|`     |
 |Enumerate          |`,`        |
 |Divide and assign  |`/=`       |
 |Mutiply and assign |`*=`       |
 |Add and assign     |`+=`       |
 |Subtract and assign|`-=`       |
+|Local assign       |`:=`       |
 |Assign             |`=`        |
+|Sequence           |`;`        |
 |Declare function   |`->`       |
 
 ### Built in constants

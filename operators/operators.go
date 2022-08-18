@@ -19,11 +19,12 @@ const (
 
 	OP_DECLFUNC operatorType = iota
 
-	OP_ASSIGN    operatorType = iota
-	OP_DECREMENT operatorType = iota
-	OP_INCREMENT operatorType = iota
-	OP_ASSIGNMUL operatorType = iota
-	OP_ASSIGNDIV operatorType = iota
+	OP_ASSIGN      operatorType = iota
+	OP_LOCALASSIGN operatorType = iota
+	OP_DECREMENT   operatorType = iota
+	OP_INCREMENT   operatorType = iota
+	OP_ASSIGNMUL   operatorType = iota
+	OP_ASSIGNDIV   operatorType = iota
 
 	OP_LOGICNOT operatorType = iota
 	OP_LOGICOR  operatorType = iota
@@ -70,7 +71,7 @@ type Operator struct {
 
 var (
 	operatorsPriorityList = [...]string{
-		"->", ";", "=", "-=", "+=", "*=", "/=", ",", "||", "&&", "==", "!=", "!", ">", "<", ">=", "<=", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
+		"->", ";", "=", ":=", "-=", "+=", "*=", "/=", ",", "||", "&&", "==", "!=", "!", ">", "<", ">=", "<=", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
 	}
 )
 
@@ -186,6 +187,8 @@ func GetType(op string) operatorType {
 		return OP_DECLFUNC
 	case "=":
 		return OP_ASSIGN
+	case ":=":
+		return OP_LOCALASSIGN
 	case "-=":
 		return OP_DECREMENT
 	case "+=":
@@ -485,8 +488,12 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 				}
 			}
 
-			if newOp.Type > OP_ASSIGN && newOp.OperandA.Type == OP_NONE {
-				return nil, fmt.Errorf("there is no user variable named '%s'", lit)
+			if newOp.OperandA.Type == OP_NONE {
+				if newOp.Type > OP_LOCALASSIGN {
+					return nil, fmt.Errorf("there is no user variable named '%s'", lit)
+				} else {
+					localVars[lit] = nil
+				}
 			}
 		} else {
 			newOp.OperandA, err = Generate(words[:minPriorityIndex], localVars)
@@ -575,10 +582,14 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 			Body: rightSideWords,
 		}
 		user.SetFunctionVariant(funcName, newFunc)
-	case OP_ASSIGN, OP_DECREMENT, OP_INCREMENT, OP_ASSIGNMUL, OP_ASSIGNDIV:
+	case OP_ASSIGN, OP_LOCALASSIGN, OP_DECREMENT, OP_INCREMENT, OP_ASSIGNMUL, OP_ASSIGNDIV:
 		switch op.Type {
 		case OP_ASSIGN:
 			op.Result = op.OperandB.Result
+		case OP_LOCALASSIGN:
+			op.Result = op.OperandB.Result
+			localVars[op.OperandA.Result.(string)] = op.Result
+			return op.Result, nil
 		case OP_DECREMENT:
 			op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
 		case OP_INCREMENT:
@@ -596,7 +607,7 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 		case OP_LOCALVAR:
 			localVars[op.OperandA.OperandA.Result.(string)] = op.Result
 		default:
-			return nil, fmt.Errorf("tru to assign non user variable")
+			return nil, fmt.Errorf("try to assign non user variable")
 		}
 	case OP_LOGICNOT:
 		op.Result = !utils.ToBool(op.OperandB.Result)

@@ -11,7 +11,7 @@ const (
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
-	operatorLiterals = ";#?=-+*/%^!&|~<>,"
+	operatorLiterals = ";#?:=-+*/%^!&|~<>,"
 )
 
 type wordType int

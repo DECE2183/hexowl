@@ -11,7 +11,7 @@ const (
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
-	operatorLiterals = "#?=-+*/%^!&|~<>,"
+	operatorLiterals = ";#?=-+*/%^!&|~<>,"
 )
 
 type wordType int
@@ -45,7 +45,7 @@ func WordsEqual(a, b []Word) bool {
 	return true
 }
 
-func ParsePromt(str string) []Word {
+func ParsePrompt(str string) []Word {
 	words := make([]Word, 0)
 
 	wordType := W_NUM_DEC

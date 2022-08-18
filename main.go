@@ -17,8 +17,13 @@ func main() {
 	var words []utils.Word
 	stdreader := bufio.NewReader(os.Stdin)
 
+	// Test promts
+	// calculate(utils.ParsePrompt("x = 2"))
+	// calculate(utils.ParsePrompt("h(a,b) -> a *= b; b + a"))
+	// calculate(utils.ParsePrompt("h(1,2)"))
+
 	for {
-		words = promt(stdreader)
+		words = prompt(stdreader)
 		if len(words) > 0 {
 			calcBeginTime := time.Now()
 			err := calculate(words)
@@ -33,14 +38,13 @@ func main() {
 	}
 }
 
-func promt(reader *bufio.Reader) []utils.Word {
-	// return utils.ParsePromt("abs(x) -> sqrt(x*x)")
+func prompt(reader *bufio.Reader) []utils.Word {
 	var input string
 
 	fmt.Printf(">: ")
 	input, _ = reader.ReadString('\n')
 
-	return utils.ParsePromt(input)
+	return utils.ParsePrompt(input)
 }
 
 func calculate(words []utils.Word) error {

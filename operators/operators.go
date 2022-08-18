@@ -52,6 +52,7 @@ const (
 	OP_POPCNT     operatorType = iota
 
 	OP_FUNCARGSEP operatorType = iota
+	OP_SEQUENCE   operatorType = iota
 
 	OP_LOCALVAR    operatorType = iota
 	OP_USERVAR     operatorType = iota
@@ -69,19 +70,36 @@ type Operator struct {
 
 var (
 	operatorsPriorityList = [...]string{
-		"->", "=", "-=", "+=", "*=", "/=", ",", "==", "!=", ">", "<", ">=", "<=", "||", "&&", "!", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
+		"->", ";", "=", "-=", "+=", "*=", "/=", ",", "||", "&&", "==", "!=", "!", ">", "<", ">=", "<=", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
 	}
 )
 
-func getLocalVariable(localVars *map[string]interface{}, literal string) (val interface{}, found bool) {
+func getLocalVariable(localVars map[string]interface{}, literal string) (val interface{}, found bool) {
 	if localVars == nil {
 		return nil, false
 	}
-	val, found = (*localVars)[literal]
+	val, found = localVars[literal]
 	return
 }
 
-func execUserFunc(f user.Func, args []interface{}, localVars *map[string]interface{}) (result interface{}, err error) {
+func copyLocalVars(dest, localVars map[string]interface{}) {
+	for k, v := range localVars {
+		switch f := v.(type) {
+		case []interface{}:
+			var newSlice []interface{}
+			copy(newSlice, f)
+			dest[k] = newSlice
+		case map[string]interface{}:
+			newMap := make(map[string]interface{})
+			copyLocalVars(newMap, f)
+			dest[k] = newMap
+		default:
+			dest[k] = v
+		}
+	}
+}
+
+func execUserFunc(f user.Func, args []interface{}, localVars map[string]interface{}) (result interface{}, err error) {
 	for _, variant := range f.Variants {
 		argsLen := len(args)
 		argNames := variant.ArgNames()
@@ -96,12 +114,8 @@ func execUserFunc(f user.Func, args []interface{}, localVars *map[string]interfa
 			}
 		}
 
-		var argMap map[string]interface{}
-		if localVars != nil {
-			argMap = *localVars
-		} else {
-			argMap = make(map[string]interface{})
-		}
+		argMap := make(map[string]interface{})
+		copyLocalVars(argMap, localVars)
 
 		for pos, name := range argNames {
 			if name == "@" {
@@ -111,11 +125,11 @@ func execUserFunc(f user.Func, args []interface{}, localVars *map[string]interfa
 				argMap[name] = args[pos]
 			}
 		}
-		argOperators, err := Generate(variant.Args, &argMap)
+		argOperators, err := Generate(variant.Args, argMap)
 		if err != nil {
 			continue
 		}
-		result, err := Calculate(argOperators, &argMap)
+		result, err := Calculate(argOperators, argMap)
 		if err != nil {
 			continue
 		}
@@ -149,13 +163,13 @@ func execUserFunc(f user.Func, args []interface{}, localVars *map[string]interfa
 		if !argsCompatible {
 			continue
 		}
-		bodyOperators, err := Generate(variant.Body, &argMap)
+		bodyOperators, err := Generate(variant.Body, argMap)
 		if err != nil {
 			result = nil
 			return result, err
 		}
 
-		return Calculate(bodyOperators, &argMap)
+		return Calculate(bodyOperators, argMap)
 	}
 
 	result = nil
@@ -166,6 +180,8 @@ func execUserFunc(f user.Func, args []interface{}, localVars *map[string]interfa
 
 func GetType(op string) operatorType {
 	switch op {
+	case ";":
+		return OP_SEQUENCE
 	case "->":
 		return OP_DECLFUNC
 	case "=":
@@ -231,7 +247,7 @@ func GetType(op string) operatorType {
 	}
 }
 
-func Generate(words []utils.Word, localVars *map[string]interface{}) (*Operator, error) {
+func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, error) {
 	var err error
 	newOp := &Operator{}
 
@@ -451,13 +467,26 @@ func Generate(words []utils.Word, localVars *map[string]interface{}) (*Operator,
 				return nil, fmt.Errorf("missing a variable on left side of operator '%s'", minPriorityWord.Literal)
 			}
 			lit := words[minPriorityIndex-1].Literal
-			if newOp.Type > OP_ASSIGN {
-				if !user.HasVariable(lit) {
-					return nil, fmt.Errorf("there is no variable named '%s'", lit)
+
+			_, foundLocal := getLocalVariable(localVars, lit)
+			if foundLocal {
+				newOp.OperandA = &Operator{
+					Type:   OP_LOCALVAR,
+					Result: lit,
+				}
+			} else if user.HasVariable(lit) {
+				newOp.OperandA = &Operator{
+					Type:   OP_USERVAR,
+					Result: lit,
+				}
+			} else {
+				newOp.OperandA = &Operator{
+					Result: lit,
 				}
 			}
-			newOp.OperandA = &Operator{
-				Result: lit,
+
+			if newOp.Type > OP_ASSIGN && newOp.OperandA.Type == OP_NONE {
+				return nil, fmt.Errorf("there is no variable named '%s'", lit)
 			}
 		} else {
 			newOp.OperandA, err = Generate(words[:minPriorityIndex], localVars)
@@ -474,11 +503,13 @@ func Generate(words []utils.Word, localVars *map[string]interface{}) (*Operator,
 	return newOp, nil
 }
 
-func Calculate(op *Operator, localVars *map[string]interface{}) (interface{}, error) {
+func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 	var err error
 
+	// fmt.Println("operator:", op, "; local vars: ", localVars)
+
 	if op == nil {
-		return 0, nil
+		return nil, nil
 	}
 
 	if op.OperandA == nil && op.OperandB == nil {
@@ -486,14 +517,29 @@ func Calculate(op *Operator, localVars *map[string]interface{}) (interface{}, er
 		case OP_NONE:
 			return op.Result, nil
 		case OP_LOCALVAR:
+			op.OperandA = &Operator{
+				Result: op.Result.(string),
+			}
 			op.Result, _ = getLocalVariable(localVars, op.Result.(string))
 		case OP_USERVAR:
+			op.OperandA = &Operator{
+				Result: op.Result.(string),
+			}
 			op.Result, _ = user.GetVariable(op.Result.(string))
 		case OP_CONSTANT:
+			op.OperandA = &Operator{
+				Result: op.Result.(string),
+			}
 			op.Result, _ = builtin.GetConstant(op.Result.(string))
 		case OP_USERFUNC:
+			op.OperandA = &Operator{
+				Result: op.Result.(string),
+			}
 			op.Result, _ = user.GetFunction(op.Result.(string))
 		case OP_BUILTINFUNC:
+			op.OperandA = &Operator{
+				Result: op.Result.(string),
+			}
 			op.Result, _ = builtin.GetFunction(op.Result.(string))
 		default:
 			return nil, fmt.Errorf("missing operands")
@@ -516,6 +562,12 @@ func Calculate(op *Operator, localVars *map[string]interface{}) (interface{}, er
 	}
 
 	switch op.Type {
+	case OP_SEQUENCE:
+		if op.OperandB != nil {
+			op.Result = op.OperandB.Result
+		} else {
+			return nil, nil
+		}
 	case OP_DECLFUNC:
 		leftSideWords := op.OperandA.Result.([]utils.Word)
 		rightSideWords := op.OperandB.Result.([]utils.Word)
@@ -525,25 +577,27 @@ func Calculate(op *Operator, localVars *map[string]interface{}) (interface{}, er
 			Body: rightSideWords,
 		}
 		user.SetFunctionVariant(funcName, newFunc)
-	case OP_ASSIGN:
-		user.SetVariable(op.OperandA.Result.(string), op.OperandB.Result)
-		op.Result = op.OperandB.Result
-	case OP_DECREMENT:
-		op.Result, _ = user.GetVariable(op.OperandA.Result.(string))
-		op.Result = utils.ToNumber[float64](op.Result) - utils.ToNumber[float64](op.OperandB.Result)
-		user.SetVariable(op.OperandA.Result.(string), op.Result)
-	case OP_INCREMENT:
-		op.Result, _ = user.GetVariable(op.OperandA.Result.(string))
-		op.Result = utils.ToNumber[float64](op.Result) + utils.ToNumber[float64](op.OperandB.Result)
-		user.SetVariable(op.OperandA.Result.(string), op.Result)
-	case OP_ASSIGNMUL:
-		op.Result, _ = user.GetVariable(op.OperandA.Result.(string))
-		op.Result = utils.ToNumber[float64](op.Result) * utils.ToNumber[float64](op.OperandB.Result)
-		user.SetVariable(op.OperandA.Result.(string), op.Result)
-	case OP_ASSIGNDIV:
-		op.Result, _ = user.GetVariable(op.OperandA.Result.(string))
-		op.Result = utils.ToNumber[float64](op.Result) / utils.ToNumber[float64](op.OperandB.Result)
-		user.SetVariable(op.OperandA.Result.(string), op.Result)
+	case OP_ASSIGN, OP_DECREMENT, OP_INCREMENT, OP_ASSIGNMUL, OP_ASSIGNDIV:
+		switch op.Type {
+		case OP_ASSIGN:
+			op.Result = op.OperandB.Result
+		case OP_DECREMENT:
+			op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
+		case OP_INCREMENT:
+			op.Result = utils.ToNumber[float64](op.OperandA.Result) + utils.ToNumber[float64](op.OperandB.Result)
+		case OP_ASSIGNMUL:
+			op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
+		case OP_ASSIGNDIV:
+			op.Result = utils.ToNumber[float64](op.OperandA.Result) / utils.ToNumber[float64](op.OperandB.Result)
+		}
+		switch op.OperandA.Type {
+		case OP_NONE:
+			user.SetVariable(op.OperandA.Result.(string), op.Result)
+		case OP_USERVAR:
+			user.SetVariable(op.OperandA.OperandA.Result.(string), op.Result)
+		case OP_LOCALVAR:
+			localVars[op.OperandA.OperandA.Result.(string)] = op.Result
+		}
 	case OP_LOGICNOT:
 		op.Result = !utils.ToBool(op.OperandB.Result)
 	case OP_LOGICOR:
@@ -633,5 +687,6 @@ func Calculate(op *Operator, localVars *map[string]interface{}) (interface{}, er
 		}
 	}
 
+	// fmt.Println(op.Result)
 	return op.Result, err
 }

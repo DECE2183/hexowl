@@ -11,7 +11,7 @@ const (
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
-	operatorLiterals = ";#?:=-+*/%^!&|~<>,"
+	operatorLiterals = "\";#?:=-+*/%^!&|~<>,"
 )
 
 type wordType int
@@ -22,6 +22,7 @@ const (
 	W_NUM_DEC wordType = iota
 	W_NUM_HEX wordType = iota
 	W_NUM_BIN wordType = iota
+	W_UNIT    wordType = iota
 	W_STR     wordType = iota
 	W_OP      wordType = iota
 	W_CTL     wordType = iota
@@ -55,7 +56,7 @@ func ParsePrompt(str string) []Word {
 	for i, c := range str {
 		if wordBegin > -1 {
 			switch wordType {
-			case W_STR:
+			case W_UNIT:
 				if !(strings.Contains(stringLiterals, string(c)) || strings.Contains(decLiterals, string(c))) {
 					wordDone = true
 				}
@@ -83,6 +84,13 @@ func ParsePrompt(str string) []Word {
 						}
 					}
 				}
+			case W_STR:
+				if c == '"' {
+					wordDone = true
+					words = append(words, Word{wordType, str[wordBegin:i]})
+					wordBegin = -1
+					continue
+				}
 			case W_CTL:
 				wordDone = true
 			case W_OP:
@@ -101,8 +109,11 @@ func ParsePrompt(str string) []Word {
 			wordBegin = i
 			wordDone = false
 
-			if strings.Contains(stringLiterals, string(c)) {
+			if c == '"' {
 				wordType = W_STR
+				wordBegin++
+			} else if strings.Contains(stringLiterals, string(c)) {
+				wordType = W_UNIT
 			} else if strings.Contains(decLiterals, string(c)) {
 				wordType = W_NUM_DEC
 			} else if strings.Contains(controlLiterals, string(c)) {

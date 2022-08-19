@@ -52,8 +52,8 @@ const (
 	OP_BITINVERSE operatorType = iota
 	OP_POPCNT     operatorType = iota
 
-	OP_FUNCARGSEP operatorType = iota
-	OP_SEQUENCE   operatorType = iota
+	OP_ENUMERATE operatorType = iota
+	OP_SEQUENCE  operatorType = iota
 
 	OP_LOCALVAR    operatorType = iota
 	OP_USERVAR     operatorType = iota
@@ -179,7 +179,7 @@ func GetType(op string) operatorType {
 	case "/=":
 		return OP_ASSIGNDIV
 	case ",":
-		return OP_FUNCARGSEP
+		return OP_ENUMERATE
 	case "!":
 		return OP_LOGICNOT
 	case "||":
@@ -241,7 +241,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 	} else if len(words) == 1 {
 		w := words[0]
 		switch w.Type {
-		case utils.W_STR:
+		case utils.W_UNIT:
 			// Try to find variable
 			_, found := getLocalVariable(localVars, w.Literal)
 			if found {
@@ -289,6 +289,9 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 					return nil, fmt.Errorf("unable to parse literal '%s' as bin number", w.Literal)
 				}
 			}
+
+		case utils.W_STR:
+			newOp.Result = w.Literal
 		}
 
 		return newOp, nil
@@ -339,7 +342,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 				bracketsCount--
 			}
 			continue
-		} else if w.Type == utils.W_STR {
+		} else if w.Type == utils.W_UNIT {
 			// Function call detect
 			if i+1 < len(words)-1 && words[i+1].Type == utils.W_CTL && words[i+1].Literal == "(" {
 				words[i].Type = utils.W_FUNC
@@ -637,7 +640,7 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 	case OP_BITINVERSE:
 		op.Result = 0xFFFFFFFFFFFFFFFF ^ utils.ToNumber[uint64](op.OperandB.Result)
 
-	case OP_FUNCARGSEP:
+	case OP_ENUMERATE:
 		switch op.OperandA.Result.(type) {
 		case []interface{}:
 			break

@@ -83,24 +83,7 @@ func getLocalVariable(localVars map[string]interface{}, literal string) (val int
 	return
 }
 
-func copyLocalVars(dest, localVars map[string]interface{}) {
-	for k, v := range localVars {
-		switch f := v.(type) {
-		case []interface{}:
-			var newSlice []interface{}
-			copy(newSlice, f)
-			dest[k] = newSlice
-		case map[string]interface{}:
-			newMap := make(map[string]interface{})
-			copyLocalVars(newMap, f)
-			dest[k] = newMap
-		default:
-			dest[k] = v
-		}
-	}
-}
-
-func execUserFunc(f user.Func, args []interface{}, localVars map[string]interface{}) (result interface{}, err error) {
+func execUserFunc(f user.Func, args []interface{}) (result interface{}, err error) {
 	for _, variant := range f.Variants {
 		argsLen := len(args)
 		argNames := variant.ArgNames()
@@ -116,8 +99,6 @@ func execUserFunc(f user.Func, args []interface{}, localVars map[string]interfac
 		}
 
 		argMap := make(map[string]interface{})
-		copyLocalVars(argMap, localVars)
-
 		for pos, name := range argNames {
 			if name == "@" {
 				argMap[name] = args[pos:]
@@ -698,7 +679,7 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 			args = []interface{}{op.OperandB.Result}
 		}
 
-		op.Result, err = execUserFunc(f, args, localVars)
+		op.Result, err = execUserFunc(f, args)
 		if err != nil {
 			return nil, fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", fname, args)
 		}

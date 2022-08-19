@@ -26,13 +26,33 @@ type FuncMap map[string]Func
 var functions = FuncMap{
 	"sin": Func{
 		Args: "(x)",
-		Desc: "Sine of the radian argument x",
+		Desc: "The sine of the radian argument x",
 		Exec: sin,
 	},
 	"cos": Func{
 		Args: "(x)",
-		Desc: "Cosine of the radian argument x",
+		Desc: "The cosine of the radian argument x",
 		Exec: cos,
+	},
+	"tan": Func{
+		Args: "(x)",
+		Desc: "The tangent of the radian argument x",
+		Exec: tan,
+	},
+	"asin": Func{
+		Args: "(x)",
+		Desc: "The arcsine of the radian argument x",
+		Exec: asin,
+	},
+	"acos": Func{
+		Args: "(x)",
+		Desc: "The arccosine of the radian argument x",
+		Exec: acos,
+	},
+	"atan": Func{
+		Args: "(x)",
+		Desc: "The arctangent of the radian argument x",
+		Exec: atan,
 	},
 	"pow": Func{
 		Args: "(x,y)",
@@ -48,6 +68,21 @@ var functions = FuncMap{
 		Args: "(x)",
 		Desc: "The base-e exponential of x",
 		Exec: exp,
+	},
+	"logn": Func{
+		Args: "(x)",
+		Desc: "The natural logarithm of x",
+		Exec: logn,
+	},
+	"log2": Func{
+		Args: "(x)",
+		Desc: "The binary logarithm of x",
+		Exec: log2,
+	},
+	"log10": Func{
+		Args: "(x)",
+		Desc: "The decimal logarithm of x",
+		Exec: log10,
 	},
 	"round": Func{
 		Args: "(x)",
@@ -99,6 +134,11 @@ var functions = FuncMap{
 		Desc: "Load working environment with id",
 		Exec: load,
 	},
+	"import": Func{
+		Args: "(id,unit_name)",
+		Desc: "Import unit from the working environment with id",
+		Exec: importUnit,
+	},
 	"clear": Func{
 		Args: "()",
 		Desc: "Clear screen",
@@ -127,6 +167,34 @@ func cos(args ...interface{}) (interface{}, error) {
 	return math.Cos(utils.ToNumber[float64](args[0])), nil
 }
 
+func asin(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Asin(utils.ToNumber[float64](args[0])), nil
+}
+
+func acos(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Acos(utils.ToNumber[float64](args[0])), nil
+}
+
+func tan(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Tan(utils.ToNumber[float64](args[0])), nil
+}
+
+func atan(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Atan(utils.ToNumber[float64](args[0])), nil
+}
+
 func pow(args ...interface{}) (interface{}, error) {
 	if len(args) < 2 {
 		return nil, fmt.Errorf("not enough arguments")
@@ -139,6 +207,27 @@ func sqrt(args ...interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("not enough arguments")
 	}
 	return math.Sqrt(utils.ToNumber[float64](args[0])), nil
+}
+
+func logn(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Log(utils.ToNumber[float64](args[0])), nil
+}
+
+func log2(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Log2(utils.ToNumber[float64](args[0])), nil
+}
+
+func log10(args ...interface{}) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+	return math.Log10(utils.ToNumber[float64](args[0])), nil
 }
 
 func exp(args ...interface{}) (interface{}, error) {
@@ -241,13 +330,13 @@ func save(args ...interface{}) (interface{}, error) {
 	userDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to get user home directory\n", envID)
-		return 0, nil
+		return false, nil
 	}
 	saveDir := fmt.Sprintf("%s/.hexowl/environment", userDir)
 	err = os.MkdirAll(saveDir, 0666)
 	if err != nil {
 		fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create save directory\n", envID)
-		return 0, nil
+		return false, nil
 	}
 	savePath := fmt.Sprintf("%s/0x%016X.json", saveDir, envID)
 	saveData := saveStruct{
@@ -257,19 +346,57 @@ func save(args ...interface{}) (interface{}, error) {
 	saveJson, err := json.Marshal(saveData)
 	if err != nil {
 		fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to create data\n", envID)
-		return 0, nil
+		return false, nil
 	}
 	err = os.WriteFile(savePath, saveJson, 0666)
 	if err != nil {
 		fmt.Printf("\n\tEnvironment 0x%016X save failed: unable to write file\n", envID)
-		return 0, nil
+		return false, nil
 	}
 	fmt.Printf("\n\tSaving environment as 0x%016X\n", envID)
-	return uint64(1), nil
+	return true, nil
 }
 
 func load(args ...interface{}) (interface{}, error) {
 	envID := utils.ToNumber[uint64](args[0])
+	userDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to get user home directory\n", envID)
+		return false, nil
+	}
+	loadPath := fmt.Sprintf("%s/.hexowl/environment/0x%016X.json", userDir, envID)
+	loadData := saveStruct{}
+	loadBuffer, err := os.ReadFile(loadPath)
+	if err != nil {
+		fmt.Printf("\n\tEnvironment 0x%016X load failed: environment doesn't exists\n", envID)
+		return false, nil
+	}
+	err = json.Unmarshal(loadBuffer, &loadData)
+	if err != nil {
+		fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to parse environment data\n", envID)
+		return false, nil
+	}
+	user.DropVariables()
+	for name, val := range loadData.UserVars {
+		user.SetVariable(name, val)
+	}
+	user.DropFunctions()
+	for name, val := range loadData.UserFuncs {
+		user.SetFunction(name, val)
+	}
+	fmt.Printf("\n\tEnvironment 0x%016X loaded\n", envID)
+	return true, nil
+}
+
+func importUnit(args ...interface{}) (interface{}, error) {
+	if len(args) < 2 {
+		return 0, fmt.Errorf("not enough arguments")
+	}
+
+	envID := utils.ToNumber[uint64](args[0])
+	fmt.Println(args[0])
+	return false, nil
+
 	userDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Printf("\n\tEnvironment 0x%016X load failed: unable to get user home directory\n", envID)

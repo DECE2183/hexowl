@@ -660,16 +660,22 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 		switch op.OperandA.Result.(type) {
 		case []interface{}:
 			break
+		case nil:
+			op.OperandA.Result = make([]interface{}, 0)
 		default:
 			op.OperandA.Result = []interface{}{op.OperandA.Result}
 		}
 		switch op.OperandB.Result.(type) {
-		case []interface{}:
+		case []interface{}, nil:
 			break
 		default:
 			op.OperandB.Result = []interface{}{op.OperandB.Result}
 		}
-		op.Result = append(op.OperandA.Result.([]interface{}), op.OperandB.Result.([]interface{})...)
+		if op.OperandB.Result == nil {
+			op.Result = op.OperandA.Result
+		} else {
+			op.Result = append(op.OperandA.Result.([]interface{}), op.OperandB.Result.([]interface{})...)
+		}
 
 	case OP_BUILTINFUNC:
 		f, _ := builtin.GetFunction(op.OperandA.Result.(string))

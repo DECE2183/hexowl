@@ -11,7 +11,7 @@ const (
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
 	controlLiterals  = "()"
-	operatorLiterals = "\";#?:=-+*/%^!&|~<>,"
+	operatorLiterals = ";#?:=-+*/%^!&|~<>,"
 )
 
 type wordType int
@@ -23,10 +23,10 @@ const (
 	W_NUM_HEX wordType = iota
 	W_NUM_BIN wordType = iota
 	W_UNIT    wordType = iota
-	W_STR     wordType = iota
 	W_OP      wordType = iota
 	W_CTL     wordType = iota
 	W_FUNC    wordType = iota
+	W_STR     wordType = iota
 )
 
 type Word struct {

@@ -70,7 +70,7 @@ func DropFunctions() {
 func (v FuncVariant) ArgNames() (pos []string) {
 	argFound := false
 	for _, w := range v.Args {
-		if w.Type == utils.W_STR && !argFound {
+		if w.Type == utils.W_UNIT && !argFound {
 			pos = append(pos, w.Literal)
 			argFound = true
 		} else if w.Type == utils.W_OP && w.Literal == "," {

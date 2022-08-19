@@ -84,16 +84,20 @@ func getLocalVariable(localVars map[string]interface{}, literal string) (val int
 }
 
 func execUserFunc(f user.Func, args []interface{}) (result interface{}, err error) {
-	for _, variant := range f.Variants {
+	var lasterr error
+
+	for vi, variant := range f.Variants {
 		argsLen := len(args)
 		argNames := variant.ArgNames()
 		argNamesLen := len(argNames)
 		if argNamesLen != argsLen {
 			if argNamesLen == 0 {
 				if argsLen > 1 || args[0] != nil {
+					lasterr = fmt.Errorf("expected 0 args but got %d (#%d)", argsLen, vi)
 					continue
 				}
 			} else if argsLen < argNamesLen || argNames[argNamesLen-1] != "@" {
+				lasterr = fmt.Errorf("expected %d args but got %d (#%d)", argNamesLen, argsLen, vi)
 				continue
 			}
 		}
@@ -109,10 +113,12 @@ func execUserFunc(f user.Func, args []interface{}) (result interface{}, err erro
 		}
 		argOperators, err := Generate(variant.Args, argMap)
 		if err != nil {
+			lasterr = fmt.Errorf("%s (#%d)", err, vi)
 			continue
 		}
 		result, err := Calculate(argOperators, argMap)
 		if err != nil {
+			lasterr = fmt.Errorf("%s (#%d)", err, vi)
 			continue
 		}
 
@@ -143,6 +149,7 @@ func execUserFunc(f user.Func, args []interface{}) (result interface{}, err erro
 		}
 
 		if !argsCompatible {
+			lasterr = fmt.Errorf("args not compatible (#%d)", vi)
 			continue
 		}
 		bodyOperators, err := Generate(variant.Body, argMap)
@@ -155,7 +162,8 @@ func execUserFunc(f user.Func, args []interface{}) (result interface{}, err erro
 	}
 
 	result = nil
-	err = fmt.Errorf("variation not found")
+	err = lasterr
+	// err = fmt.Errorf("variation not found")
 
 	return
 }
@@ -684,7 +692,7 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 
 		op.Result, err = execUserFunc(f, args)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v", fname, args)
+			return nil, fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v; (%s)", fname, args, err)
 		}
 	}
 

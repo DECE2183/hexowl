@@ -109,6 +109,11 @@ var functions = FuncMap{
 		Desc: "List available variables",
 		Exec: vars,
 	},
+	"rmvar": Func{
+		Args: "(name)",
+		Desc: "Delete a specific user variable",
+		Exec: rmVar,
+	},
 	"clvars": Func{
 		Args: "()",
 		Desc: "Delete user defined variables",
@@ -118,6 +123,16 @@ var functions = FuncMap{
 		Args: "()",
 		Desc: "List alailable functions",
 		Exec: funcs,
+	},
+	"rmfunc": Func{
+		Args: "(name)",
+		Desc: "Delete a specific user function",
+		Exec: rmFunc,
+	},
+	"rmfuncvar": Func{
+		Args: "(name)",
+		Desc: "Delete a specific user function variation",
+		Exec: rmFuncVar,
 	},
 	"clfuncs": Func{
 		Args: "()",
@@ -250,6 +265,21 @@ func vars(args ...interface{}) (interface{}, error) {
 	return varsCount, nil
 }
 
+func rmVar(args ...interface{}) (interface{}, error) {
+	removedVars := 0
+
+	for _, arg := range args {
+		name, isString := arg.(string)
+		if !isString || !user.HasVariable(name) {
+			continue
+		}
+		user.DeleteVariable(name)
+		removedVars++
+	}
+
+	return uint64(removedVars), nil
+}
+
 func clearVars(args ...interface{}) (interface{}, error) {
 	user.DropVariables()
 	return uint64(0), nil
@@ -278,6 +308,45 @@ func funcs(args ...interface{}) (interface{}, error) {
 		fmt.Printf("\n\tThere are no builtin functions.\n")
 	}
 	return funcsCount, nil
+}
+
+func rmFunc(args ...interface{}) (interface{}, error) {
+	removedFuncs := 0
+
+	for _, arg := range args {
+		name, isString := arg.(string)
+		if !isString || !user.HasFunction(name) {
+			continue
+		}
+		user.DeleteFunction(name)
+		removedFuncs++
+	}
+
+	return uint64(removedFuncs), nil
+}
+
+func rmFuncVar(args ...interface{}) (interface{}, error) {
+	if len(args) < 2 {
+		return nil, fmt.Errorf("not enough arguments")
+	}
+
+	name, isString := args[0].(string)
+	if !isString {
+		return nil, fmt.Errorf("the function name must be a string")
+	}
+	if !user.HasFunction(name) {
+		return nil, fmt.Errorf("the function '%s' does not exists", name)
+	}
+
+	varindex := utils.ToNumber[uint64](args[1])
+	f, _ := user.GetFunction(name)
+	if int(varindex) >= len(f.Variants) {
+		return nil, fmt.Errorf("the function '%s' does not have variant %d", name, varindex)
+	}
+
+	user.DeleteFunctionVariant(name, int(varindex))
+
+	return true, nil
 }
 
 func clearFuncs(args ...interface{}) (interface{}, error) {

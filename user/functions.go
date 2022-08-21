@@ -57,6 +57,16 @@ func DeleteFunction(name string) {
 	delete(functions, name)
 }
 
+func DeleteFunctionVariant(name string, idx int) {
+	f := functions[name]
+	if idx < len(f.Variants)-1 {
+		f.Variants = append(f.Variants[:idx], f.Variants[idx+1:]...)
+	} else if idx == len(f.Variants)-1 {
+		f.Variants = f.Variants[:idx]
+	}
+	functions[name] = f
+}
+
 func ListFunctions() map[string]Func {
 	return functions
 }

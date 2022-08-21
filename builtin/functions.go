@@ -12,8 +12,9 @@ import (
 )
 
 type saveStruct struct {
-	UserVars  map[string]interface{}
-	UserFuncs map[string]user.Func
+	Description string
+	UserVars    map[string]interface{}
+	UserFuncs   map[string]user.Func
 }
 
 type Func struct {
@@ -22,6 +23,8 @@ type Func struct {
 	Exec func(args ...interface{}) (interface{}, error)
 }
 type FuncMap map[string]Func
+
+var loadedEnvDesc = ""
 
 var functions = FuncMap{
 	"sin": Func{
@@ -367,6 +370,23 @@ func getEnvPath(envName string) (string, error) {
 	return fmt.Sprintf("%s/%s.json", saveDir, envName), nil
 }
 
+func getEnvContent(envName string) (saveStruct, error) {
+	path, err := getEnvPath(envName)
+	if err != nil {
+		return saveStruct{}, fmt.Errorf("unable to get access to file")
+	}
+	data := saveStruct{}
+	buffer, err := os.ReadFile(path)
+	if err != nil {
+		return saveStruct{}, fmt.Errorf("environment doesn't exists")
+	}
+	err = json.Unmarshal(buffer, &data)
+	if err != nil {
+		return saveStruct{}, fmt.Errorf("unable to parse environment data")
+	}
+	return data, nil
+}
+
 func save(args ...interface{}) (interface{}, error) {
 	var envName string
 
@@ -387,6 +407,18 @@ func save(args ...interface{}) (interface{}, error) {
 	saveData := saveStruct{
 		UserVars:  user.ListVariables(),
 		UserFuncs: user.ListFunctions(),
+	}
+	// Add description if it is provided
+	if len(args) > 1 {
+		desc, success := args[1].(string)
+		if success {
+			saveData.Description = desc
+		} else {
+			fmt.Printf("\n\tEnvironment '%s' save failed: second argument must be a string\n", envName)
+			return false, nil
+		}
+	} else {
+		saveData.Description = loadedEnvDesc
 	}
 	saveJson, err := json.Marshal(saveData)
 	if err != nil {
@@ -415,24 +447,14 @@ func load(args ...interface{}) (interface{}, error) {
 	}
 
 	// Load environment
-	loadPath, err := getEnvPath(envName)
+	loadData, err := getEnvContent(envName)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' load failed: unable to get access to file\n", envName)
-		return false, nil
-	}
-	loadData := saveStruct{}
-	loadBuffer, err := os.ReadFile(loadPath)
-	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' load failed: environment doesn't exists\n", envName)
-		return false, nil
-	}
-	err = json.Unmarshal(loadBuffer, &loadData)
-	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' load failed: unable to parse environment data\n", envName)
+		fmt.Printf("\n\tEnvironment '%s' load failed: %s\n", envName, err)
 		return false, nil
 	}
 
 	// Apply loaded environment
+	loadedEnvDesc = loadData.Description
 	user.DropVariables()
 	for name, val := range loadData.UserVars {
 		user.SetVariable(name, val)
@@ -458,20 +480,9 @@ func importUnit(args ...interface{}) (interface{}, error) {
 	}
 
 	// Load environment
-	loadPath, err := getEnvPath(envName)
+	loadData, err := getEnvContent(envName)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' import failed: unable to get access to file\n", envName)
-		return false, nil
-	}
-	loadData := saveStruct{}
-	loadBuffer, err := os.ReadFile(loadPath)
-	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' import failed: environment doesn't exists\n", envName)
-		return false, nil
-	}
-	err = json.Unmarshal(loadBuffer, &loadData)
-	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' import failed: unable to parse environment data\n", envName)
+		fmt.Printf("\n\tEnvironment '%s' import failed: %s\n", envName, err)
 		return false, nil
 	}
 
@@ -544,10 +555,24 @@ func listEnv(args ...interface{}) (interface{}, error) {
 		for _, v := range files {
 			fname := v.Name()
 			extIndex := len(fname) - 5
-			if !v.IsDir() && len(fname) > 5 && fname[extIndex:] == ".json" {
-				fmt.Printf("\t\t%s\n", fname[:extIndex])
-				envCount++
+			if extIndex < 0 {
+				continue
 			}
+
+			fname = fname[:extIndex]
+
+			env, err := getEnvContent(fname)
+			if err != nil {
+				continue
+			}
+
+			fmt.Printf("\t\t%s", fname)
+			if env.Description != "" {
+				fmt.Printf(" - %s", env.Description)
+			}
+			fmt.Printf("\n")
+
+			envCount++
 		}
 		return uint64(envCount), nil
 	} else {

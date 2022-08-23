@@ -61,7 +61,7 @@ func ParsePrompt(str string) []Word {
 					wordDone = true
 				}
 			case W_NUM_DEC, W_NUM_HEX, W_NUM_BIN:
-				if (c == 'x' || c == 'b') && i-wordBegin == 1 {
+				if (c == 'x' || c == 'b') && i-wordBegin == 1 && wordType == W_NUM_DEC {
 					if c == 'x' {
 						wordType = W_NUM_HEX
 					} else {

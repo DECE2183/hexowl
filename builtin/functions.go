@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/bits"
 	"os"
+	"sort"
 
 	"github.com/dece2183/hexowl/user"
 	"github.com/dece2183/hexowl/utils"
@@ -248,19 +249,29 @@ func vars(args ...interface{}) (interface{}, error) {
 	varsCount := uint64(len(userVars))
 	if varsCount > 0 {
 		fmt.Printf("\n\tUser variables:\n")
-		for key, value := range userVars {
-			fmt.Printf("\t\t[%s] = %v\n", key, value)
+		keysList := make([]string, 0, len(userVars))
+		for key := range userVars {
+			keysList = append(keysList, key)
+		}
+		sort.Strings(keysList)
+		for _, key := range keysList {
+			fmt.Printf("\t\t[%s] = %v\n", key, userVars[key])
 		}
 	} else {
 		fmt.Printf("\n\tThere are no user defined variables.\n")
 	}
 	if len(constants) > 0 {
 		fmt.Printf("\n\tBuiltin constants:\n")
-		for key, value := range constants {
+		keysList := make([]string, 0, len(constants))
+		for key := range constants {
+			keysList = append(keysList, key)
+		}
+		sort.Strings(keysList)
+		for _, key := range keysList {
 			if key == "help" {
 				continue
 			}
-			fmt.Printf("\t\t[%s] = %v\n", key, value)
+			fmt.Printf("\t\t[%s] = %v\n", key, constants[key])
 		}
 	} else {
 		fmt.Printf("\n\tThere are no builtin constants.\n")
@@ -293,7 +304,13 @@ func funcs(args ...interface{}) (interface{}, error) {
 	funcsCount := uint64(len(userFuncs))
 	if funcsCount > 0 {
 		fmt.Printf("\n\tUser functions:\n")
-		for key, value := range userFuncs {
+		keysList := make([]string, 0, len(userFuncs))
+		for key := range userFuncs {
+			keysList = append(keysList, key)
+		}
+		sort.Strings(keysList)
+		for _, key := range keysList {
+			value := userFuncs[key]
 			fmt.Printf("\t\t%-8s%s\n", key, value.Variants[0])
 			for v := 1; v < len(value.Variants); v++ {
 				fmt.Printf("\t\t\t%s\n", value.Variants[v])
@@ -304,7 +321,13 @@ func funcs(args ...interface{}) (interface{}, error) {
 	}
 	if len(*bFuncs) > 0 {
 		fmt.Printf("\n\tBuiltin functions:\n")
-		for key, value := range *bFuncs {
+		keysList := make([]string, 0, len(*bFuncs))
+		for key := range *bFuncs {
+			keysList = append(keysList, key)
+		}
+		sort.Strings(keysList)
+		for _, key := range keysList {
+			value := (*bFuncs)[key]
 			fmt.Printf("\t\t%-8s%-8s - %s\n", key, value.Args, value.Desc)
 		}
 	} else {

@@ -19,12 +19,14 @@ const (
 
 	OP_DECLFUNC operatorType = iota
 
-	OP_ASSIGN      operatorType = iota
-	OP_LOCALASSIGN operatorType = iota
-	OP_DECREMENT   operatorType = iota
-	OP_INCREMENT   operatorType = iota
-	OP_ASSIGNMUL   operatorType = iota
-	OP_ASSIGNDIV   operatorType = iota
+	OP_ASSIGN       operatorType = iota
+	OP_LOCALASSIGN  operatorType = iota
+	OP_DECREMENT    operatorType = iota
+	OP_INCREMENT    operatorType = iota
+	OP_ASSIGNMUL    operatorType = iota
+	OP_ASSIGNDIV    operatorType = iota
+	OP_ASSIGNBITAND operatorType = iota
+	OP_ASSIGNBITOR  operatorType = iota
 
 	OP_LOGICNOT operatorType = iota
 	OP_LOGICOR  operatorType = iota
@@ -71,7 +73,7 @@ type Operator struct {
 
 var (
 	operatorsPriorityList = [...]string{
-		"->", ";", "=", ":=", "-=", "+=", "*=", "/=", ",", "||", "&&", "==", "!=", "!", ">", "<", ">=", "<=", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
+		"->", ";", "=", ":=", "-=", "+=", "*=", "/=", "&=", "|=", ",", "||", "&&", "==", "!=", "!", ">", "<", ">=", "<=", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
 	}
 )
 
@@ -186,6 +188,10 @@ func GetType(op string) operatorType {
 		return OP_ASSIGNMUL
 	case "/=":
 		return OP_ASSIGNDIV
+	case "&=":
+		return OP_ASSIGNBITAND
+	case "|=":
+		return OP_ASSIGNBITOR
 	case ",":
 		return OP_ENUMERATE
 	case "!":
@@ -574,7 +580,7 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 			Body: rightSideWords,
 		}
 		user.SetFunctionVariant(funcName, newFunc)
-	case OP_ASSIGN, OP_LOCALASSIGN, OP_DECREMENT, OP_INCREMENT, OP_ASSIGNMUL, OP_ASSIGNDIV:
+	case OP_ASSIGN, OP_LOCALASSIGN, OP_DECREMENT, OP_INCREMENT, OP_ASSIGNMUL, OP_ASSIGNDIV, OP_ASSIGNBITAND, OP_ASSIGNBITOR:
 		switch op.Type {
 		case OP_ASSIGN:
 			op.Result = op.OperandB.Result
@@ -589,7 +595,16 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 		case OP_ASSIGNMUL:
 			op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
 		case OP_ASSIGNDIV:
-			op.Result = utils.ToNumber[float64](op.OperandA.Result) / utils.ToNumber[float64](op.OperandB.Result)
+			opB := utils.ToNumber[float64](op.OperandB.Result)
+			if opB == 0 {
+				op.Result = math.Inf(int(utils.ToNumber[float64](op.OperandA.Result)))
+			} else {
+				op.Result = utils.ToNumber[float64](op.OperandA.Result) / opB
+			}
+		case OP_ASSIGNBITAND:
+			op.Result = utils.ToNumber[uint64](op.OperandA.Result) & utils.ToNumber[uint64](op.OperandB.Result)
+		case OP_ASSIGNBITOR:
+			op.Result = utils.ToNumber[uint64](op.OperandA.Result) | utils.ToNumber[uint64](op.OperandB.Result)
 		}
 		switch op.OperandA.Type {
 		case OP_NONE:
@@ -626,9 +641,19 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 	case OP_MULTIPLY:
 		op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
 	case OP_DIVIDE:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) / utils.ToNumber[float64](op.OperandB.Result)
+		opB := utils.ToNumber[float64](op.OperandB.Result)
+		if opB == 0 {
+			op.Result = math.Inf(int(utils.ToNumber[float64](op.OperandA.Result)))
+		} else {
+			op.Result = utils.ToNumber[float64](op.OperandA.Result) / opB
+		}
 	case OP_MODULO:
-		op.Result = utils.ToNumber[int64](op.OperandA.Result) % utils.ToNumber[int64](op.OperandB.Result)
+		opB := utils.ToNumber[int64](op.OperandB.Result)
+		if opB == 0 {
+			op.Result = math.Inf(1)
+		} else {
+			op.Result = utils.ToNumber[int64](op.OperandA.Result) % opB
+		}
 	case OP_POWER:
 		op.Result = math.Pow(utils.ToNumber[float64](op.OperandA.Result), utils.ToNumber[float64](op.OperandB.Result))
 	case OP_LEFTSHIFT:

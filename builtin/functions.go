@@ -134,7 +134,7 @@ var functions = FuncMap{
 		Exec: rmFunc,
 	},
 	"rmfuncvar": Func{
-		Args: "(name)",
+		Args: "(name,varid)",
 		Desc: "Delete a specific user function variation",
 		Exec: rmFuncVar,
 	},
@@ -311,7 +311,7 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := userFuncs[key]
-			fmt.Printf("\t\t%-8s%s\n", key, value.Variants[0])
+			fmt.Printf("\t\t%-12s%s\n", key, value.Variants[0])
 			for v := 1; v < len(value.Variants); v++ {
 				fmt.Printf("\t\t\t%s\n", value.Variants[v])
 			}
@@ -328,7 +328,7 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := (*bFuncs)[key]
-			fmt.Printf("\t\t%-8s%-8s - %s\n", key, value.Args, value.Desc)
+			fmt.Printf("\t\t%-12s%-12s - %s\n", key, value.Args, value.Desc)
 		}
 	} else {
 		fmt.Printf("\n\tThere are no builtin functions.\n")

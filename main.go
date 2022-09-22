@@ -14,20 +14,38 @@ import (
 func main() {
 	builtin.FuncsInit()
 
-	var words []utils.Word
-	stdreader := bufio.NewReader(os.Stdin)
+	if len(os.Args) > 1 {
+		var input string
 
-	for {
-		words = prompt(stdreader)
-		if len(words) > 0 {
-			calcBeginTime := time.Now()
-			err := calculate(words)
-			calcTime := time.Since(calcBeginTime)
+		for i := 1; i < len(os.Args); i++ {
+			input += os.Args[i]
+		}
 
-			if err != nil {
-				fmt.Printf("\n\tError occurred: %s\n\n", err)
-			} else {
-				fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
+		words := utils.ParsePrompt(input)
+		err := calculate(words)
+		if err != nil {
+			fmt.Printf("\n\tError occurred: %s\n\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println()
+		os.Exit(0)
+	} else {
+		var words []utils.Word
+		stdreader := bufio.NewReader(os.Stdin)
+
+		for {
+			words = prompt(stdreader)
+			if len(words) > 0 {
+				calcBeginTime := time.Now()
+				err := calculate(words)
+				calcTime := time.Since(calcBeginTime)
+
+				if err != nil {
+					fmt.Printf("\n\tError occurred: %s\n\n", err)
+				} else {
+					fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
+				}
 			}
 		}
 	}

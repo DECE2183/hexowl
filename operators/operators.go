@@ -165,7 +165,6 @@ func execUserFunc(f user.Func, args []interface{}) (result interface{}, err erro
 
 	result = nil
 	err = lasterr
-	// err = fmt.Errorf("variation not found")
 
 	return
 }
@@ -267,12 +266,36 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			} else if builtin.HasConstant(w.Literal) {
 				newOp.Type = OP_CONSTANT
 				newOp.Result = w.Literal
+			} else if user.HasFunction(w.Literal) {
+				newOp.Type = OP_USERFUNC
+				newOp.Result = w.Literal
+			} else if builtin.HasFunction(w.Literal) {
+				newOp.Type = OP_BUILTINFUNC
+				newOp.Result = w.Literal
 			} else {
 				return nil, fmt.Errorf("there is no variable named '%s'", w.Literal)
 			}
 
 		case utils.W_FUNC:
 			// Try to find function
+			v, found := getLocalVariable(localVars, w.Literal)
+			if found || user.HasVariable(w.Literal) {
+				if !found {
+					v, _ = user.GetVariable(w.Literal)
+				}
+				switch fname := v.(type) {
+				case string:
+					if user.HasFunction(fname) {
+						newOp.Type = OP_USERFUNC
+						newOp.Result = fname
+						return newOp, nil
+					} else if builtin.HasFunction(fname) {
+						newOp.Type = OP_BUILTINFUNC
+						newOp.Result = fname
+						return newOp, nil
+					}
+				}
+			}
 			if user.HasFunction(w.Literal) {
 				newOp.Type = OP_USERFUNC
 				newOp.Result = w.Literal
@@ -536,31 +559,30 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 			op.Result, _ = builtin.GetConstant(op.Result.(string))
 		case OP_USERFUNC:
 			op.OperandA = &Operator{
-				Result: op.Result.(string),
+				Result: true,
 			}
-			op.Result, _ = user.GetFunction(op.Result.(string))
+			op.Result = op.Result.(string)
 		case OP_BUILTINFUNC:
 			op.OperandA = &Operator{
-				Result: op.Result.(string),
+				Result: true,
 			}
-			op.Result, _ = builtin.GetFunction(op.Result.(string))
+			op.Result = op.Result.(string)
 		default:
 			return nil, fmt.Errorf("missing operands")
 		}
-
 		return op.Result, nil
-	}
-
-	if op.OperandA != nil {
-		op.OperandA.Result, err = Calculate(op.OperandA, localVars)
-		if err != nil {
-			return nil, err
+	} else {
+		if op.OperandA != nil {
+			op.OperandA.Result, err = Calculate(op.OperandA, localVars)
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	if op.OperandB != nil {
-		op.OperandB.Result, err = Calculate(op.OperandB, localVars)
-		if err != nil {
-			return nil, err
+		if op.OperandB != nil {
+			op.OperandB.Result, err = Calculate(op.OperandB, localVars)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

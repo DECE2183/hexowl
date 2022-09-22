@@ -61,7 +61,7 @@ go build
 |Logical AND             |`&&`       |
 |Logical OR              |`\|\|`     |
 |Enumerate               |`,`        |
-|Bitwise OR and assign   |`|=`       |
+|Bitwise OR and assign   |`\|=`      |
 |Bitwise AND and assign  |`&=`       |
 |Divide and assign       |`/=`       |
 |Mutiply and assign      |`*=`       |
@@ -87,37 +87,37 @@ go build
 
 ### Built in functions
 
-| Function    | Arguments      | Description
-|-------------|----------------|-----------------------------------------------------|
-| `acos`      | `(x)`          | The arccosine of the radian argument `x`            |
-| `asin`      | `(x)`          | The arcsine of the radian argument `x`              |
-| `atan`      | `(x)`          | The arctangent of the radian argument `x`           |
-| `ceil`      | `(x)`          | The least integer value greater than or equal to `x`|
-| `clear`     | `()`           | Clear screen                                        |
-| `clfuncs`   | `()`           | Delete user defined functions                       |
-| `clvars`    | `()`           | Delete user defined variables                       |
-| `cos`       | `(x)`          | The cosine of the radian argument `x`               |
-| `envs`      | `()`           | List all available environments                     |
-| `exit`      | `(code)`       | Exit with error code                                |
-| `exp`       | `(x)`          | The base-e exponential of `x`                       |
-| `floor`     | `(x)`          | The greatest integer value less than or equal to `x`|
-| `funcs`     | `()`           | List alailable functions                            |
-| `import`    | `(id,unit)`    | Import unit from the working environment with `id`  |
-| `load`      | `(id)`         | Load working environment with `id`                  |
-| `log10`     | `(x)`          | The decimal logarithm of `x`                        |
-| `log2`      | `(x)`          | The binary logarithm of `x`                         |
-| `logn`      | `(x)`          | The natural logarithm of `x`                        |
-| `popcnt`    | `(x)`          | The number of one bits ("population count") in `x`  |
-| `pow`       | `(x,y)`        | The base-`x` exponential of `y`                     |
-| `rmfunc`    | `(name)`       | Delete user function with `name`                    |
-| `rmfuncvar` | `(name,varid)` | Delete user function `name` variation number `varid`|
-| `rmvar`     | `(name)`       | Delete user variable with `name`                    |
-| `round`     | `(x)`          | The nearest integer, rounding half away from zero   |
-| `save`      | `(envname)`    | Save working environment with `envname`             |
-| `sin`       | `(x)`          | The sine of the radian argument `x`                 |
-| `sqrt`      | `(x)`          | The square root of `x`                              |
-| `tan`       | `(x)`          | The tangent of the radian argument `x`              |
-| `vars`      | `()`           | List available variables                            |
+| Function    | Arguments        | Description
+|-------------|------------------|-----------------------------------------------------|
+| `acos`      | (`x`)            | The arccosine of the radian argument `x`            |
+| `asin`      | (`x`)            | The arcsine of the radian argument `x`              |
+| `atan`      | (`x`)            | The arctangent of the radian argument `x`           |
+| `ceil`      | (`x`)            | The least integer value greater than or equal to `x`|
+| `clear`     | ( )              | Clear screen                                        |
+| `clfuncs`   | ( )              | Delete user defined functions                       |
+| `clvars`    | ( )              | Delete user defined variables                       |
+| `cos`       | (`x`)            | The cosine of the radian argument `x`               |
+| `envs`      | ( )              | List all available environments                     |
+| `exit`      | (`code`)         | Exit with error `code`                              |
+| `exp`       | (`x`)            | The base-e exponential of `x`                       |
+| `floor`     | (`x`)            | The greatest integer value less than or equal to `x`|
+| `funcs`     | ( )              | List alailable functions                            |
+| `import`    | (`id`,`unit`)    | Import unit from the working environment with `id`  |
+| `load`      | (`id`)           | Load working environment with `id`                  |
+| `log10`     | (`x`)            | The decimal logarithm of `x`                        |
+| `log2`      | (`x`)            | The binary logarithm of `x`                         |
+| `logn`      | (`x`)            | The natural logarithm of `x`                        |
+| `popcnt`    | (`x`)            | The number of one bits ("population count") in `x`  |
+| `pow`       | (`x`,`y`)        | The base-`x` exponential of `y`                     |
+| `rmfunc`    | (`name`)         | Delete user function with `name`                    |
+| `rmfuncvar` | (`name`,`varid`) | Delete user function `name` variation number `varid`|
+| `rmvar`     | (`name`)         | Delete user variable with `name`                    |
+| `round`     | (`x`)            | The nearest integer, rounding half away from zero   |
+| `save`      | (`envname`)      | Save working environment with `envname`             |
+| `sin`       | (`x`)            | The sine of the radian argument `x`                 |
+| `sqrt`      | (`x`)            | The square root of `x`                              |
+| `tan`       | (`x`)            | The tangent of the radian argument `x`              |
+| `vars`      | ( )              | List available variables                            |
 
 ### User functions
 

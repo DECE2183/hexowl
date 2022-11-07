@@ -95,9 +95,9 @@ func calculate(words []utils.Word) error {
 						hstr += fmt.Sprintf("0x%X ", utils.ToNumber[uint64](el))
 						bstr += fmt.Sprintf("0b%b ", utils.ToNumber[uint64](el))
 					}
+					fmt.Printf("\t\t[%s]\r\n", hstr[:len(hstr)-1])
+					fmt.Printf("\t\t[%s]\r\n", bstr[:len(bstr)-1])
 				}
-				fmt.Printf("\t\t[%s]\r\n", hstr[:len(hstr)-1])
-				fmt.Printf("\t\t[%s]\r\n", bstr[:len(bstr)-1])
 			}
 		default:
 			fmt.Printf("\n\tResult:\t%v\r\n", val)

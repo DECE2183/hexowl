@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/bits"
 	"strconv"
+	"strings"
 
 	"github.com/dece2183/hexowl/builtin"
 	"github.com/dece2183/hexowl/user"
@@ -308,8 +309,20 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			}
 			return nil, fmt.Errorf("there is no function named '%s'", w.Literal)
 
-		case utils.W_NUM_DEC, utils.W_NUM_HEX, utils.W_NUM_BIN:
+		case utils.W_NUM_DEC, utils.W_NUM_HEX, utils.W_NUM_BIN, utils.W_NUM_SCI:
 			switch w.Type {
+			case utils.W_NUM_SCI:
+				num := strings.Split(w.Literal, "e")
+				var mantisse, order float64
+				mantisse, err = strconv.ParseFloat(num[0], 64)
+				if err != nil {
+					return nil, fmt.Errorf("unable to parse mantisse part of literal '%s'", w.Literal)
+				}
+				order, err = strconv.ParseFloat(num[1], 64)
+				if err != nil {
+					return nil, fmt.Errorf("unable to parse order part of literal '%s'", w.Literal)
+				}
+				newOp.Result = mantisse * math.Pow(10, order)
 			case utils.W_NUM_DEC:
 				newOp.Result, err = strconv.ParseFloat(w.Literal, 64)
 				if err != nil {

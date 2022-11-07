@@ -9,6 +9,7 @@ import (
 
 const (
 	stringLiterals   = "_@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
+	sciLiterals      = "0123456789.eE-+"
 	decLiterals      = "0123456789."
 	hexLiterals      = "0123456789ABCDEFabcdef"
 	binLiterals      = "01"
@@ -21,6 +22,7 @@ type wordType int
 // Word types
 const (
 	W_NONE    wordType = iota
+	W_NUM_SCI wordType = iota
 	W_NUM_DEC wordType = iota
 	W_NUM_HEX wordType = iota
 	W_NUM_BIN wordType = iota
@@ -62,7 +64,7 @@ func ParsePrompt(str string) []Word {
 				if !(strings.Contains(stringLiterals, string(c)) || strings.Contains(decLiterals, string(c))) {
 					wordDone = true
 				}
-			case W_NUM_DEC, W_NUM_HEX, W_NUM_BIN:
+			case W_NUM_DEC, W_NUM_HEX, W_NUM_BIN, W_NUM_SCI:
 				if (c == 'x' || c == 'b') && i-wordBegin == 1 && wordType == W_NUM_DEC {
 					if c == 'x' {
 						wordType = W_NUM_HEX
@@ -70,8 +72,14 @@ func ParsePrompt(str string) []Word {
 						wordType = W_NUM_BIN
 					}
 					wordBegin += 2
+				} else if (c == 'e' || c == 'E') && wordType == W_NUM_DEC {
+					wordType = W_NUM_SCI
 				} else {
 					switch wordType {
+					case W_NUM_SCI:
+						if !strings.Contains(sciLiterals, string(c)) {
+							wordDone = true
+						}
 					case W_NUM_DEC:
 						if !strings.Contains(decLiterals, string(c)) {
 							wordDone = true

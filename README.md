@@ -124,12 +124,12 @@ go build
 To declare a function, you must type its name, explain the arguments in `(` `)` and write the body of the function after `->` operator.
 
 It should look like this:
-```
+```hexowl
 >: mul(a,b) -> a * b
 ```
 
 Once declared, you can call this function as a builtin:
-```
+```hexowl
 >: mul(2,4)
 
     Result: 8
@@ -144,7 +144,7 @@ Once declared, you can call this function as a builtin:
 You can also create variants of functions with expressions right in the explanation of the arguments.
 
 Let's look at a simple example of declaring a factorial function:
-```
+```hexowl
 >: f(x == 0) -> 1
 >: f(x > 0) -> x * f(x-1)
 ```
@@ -154,7 +154,7 @@ When calling such a function, the interpreter tries to find a suitable variant d
 ### Arrays and variadic arguments
 
 You can define arrays with the enumerator operator `,`:
-```
+```hexowl
 >: x = 1,2,3,4
 ```
 
@@ -163,13 +163,13 @@ All functions receive arguments as an array, so the expressions `foo(x)` and `fo
 There is a single `@` keyword to handle such things. If it is specified as the last argument in a function declaration, it will receive an array of the arguments passed to it. The behavior is similar to the `...` and `__VA_ARGS__` preprocessor macros in C language.
 
 An example of a function that calculates the sum of all elements of an array:
-```
+```hexowl
 >: arrsum(a) -> a
 >: arrsum(a, @) -> a+arrsum(@)
 ```
 
 An example of a function that increments all elements of an array:
-```
+```hexowl
 >: arrinc(v, a) -> a+v
 >: arrinc(v, a, @) -> (a+v) , arrinc(v,@)
 ```

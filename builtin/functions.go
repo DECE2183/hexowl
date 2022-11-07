@@ -313,7 +313,7 @@ func funcs(args ...interface{}) (interface{}, error) {
 			value := userFuncs[key]
 			fmt.Printf("\t\t%-12s%s\n", key, value.Variants[0])
 			for v := 1; v < len(value.Variants); v++ {
-				fmt.Printf("\t\t\t%s\n", value.Variants[v])
+				fmt.Printf("\t\t%12s%s\n", "", value.Variants[v])
 			}
 		}
 	} else {

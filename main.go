@@ -77,10 +77,30 @@ func calculate(words []utils.Word) error {
 			fmt.Printf("\n\t%s\r\n", v)
 		case bool:
 			fmt.Printf("\n\tResult:\t%v\r\n", v)
-		default:
-			fmt.Printf("\n\tResult:\t%v\r\n", val)
+		case float32, float64:
+			fmt.Printf("\n\tResult:\t%f\r\n", val)
 			fmt.Printf("\t\t0x%X\r\n", utils.ToNumber[uint64](val))
 			fmt.Printf("\t\t0b%b\r\n", utils.ToNumber[uint64](val))
+		case int64, uint64:
+			fmt.Printf("\n\tResult:\t%d\r\n", val)
+			fmt.Printf("\t\t0x%X\r\n", utils.ToNumber[uint64](val))
+			fmt.Printf("\t\t0b%b\r\n", utils.ToNumber[uint64](val))
+		case []interface{}:
+			fmt.Printf("\n\tResult:\t%v\r\n", val)
+			if len(v) > 0 {
+				var hstr, bstr string
+				switch v[0].(type) {
+				case float32, float64, int64, uint64:
+					for _, el := range v {
+						hstr += fmt.Sprintf("0x%X ", utils.ToNumber[uint64](el))
+						bstr += fmt.Sprintf("0b%b ", utils.ToNumber[uint64](el))
+					}
+				}
+				fmt.Printf("\t\t[%s]\r\n", hstr[:len(hstr)-1])
+				fmt.Printf("\t\t[%s]\r\n", bstr[:len(bstr)-1])
+			}
+		default:
+			fmt.Printf("\n\tResult:\t%v\r\n", val)
 		}
 	}
 

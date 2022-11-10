@@ -3,6 +3,7 @@ package builtin
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"math/bits"
 	"os"
@@ -26,6 +27,7 @@ type Func struct {
 type FuncMap map[string]Func
 
 var loadedEnvDesc = ""
+var outStream io.Writer
 
 var functions = FuncMap{
 	"sin": Func{
@@ -248,20 +250,20 @@ func vars(args ...interface{}) (interface{}, error) {
 	userVars := user.ListVariables()
 	varsCount := uint64(len(userVars))
 	if varsCount > 0 {
-		fmt.Printf("\n\tUser variables:\n")
+		fmt.Fprintf(outStream, "\n\tUser variables:\n")
 		keysList := make([]string, 0, len(userVars))
 		for key := range userVars {
 			keysList = append(keysList, key)
 		}
 		sort.Strings(keysList)
 		for _, key := range keysList {
-			fmt.Printf("\t\t[%s] = %v\n", key, userVars[key])
+			fmt.Fprintf(outStream, "\t\t[%s] = %v\n", key, userVars[key])
 		}
 	} else {
-		fmt.Printf("\n\tThere are no user defined variables.\n")
+		fmt.Fprintf(outStream, "\n\tThere are no user defined variables.\n")
 	}
 	if len(constants) > 0 {
-		fmt.Printf("\n\tBuiltin constants:\n")
+		fmt.Fprintf(outStream, "\n\tBuiltin constants:\n")
 		keysList := make([]string, 0, len(constants))
 		for key := range constants {
 			keysList = append(keysList, key)
@@ -271,10 +273,10 @@ func vars(args ...interface{}) (interface{}, error) {
 			if key == "help" {
 				continue
 			}
-			fmt.Printf("\t\t[%s] = %v\n", key, constants[key])
+			fmt.Fprintf(outStream, "\t\t[%s] = %v\n", key, constants[key])
 		}
 	} else {
-		fmt.Printf("\n\tThere are no builtin constants.\n")
+		fmt.Fprintf(outStream, "\n\tThere are no builtin constants.\n")
 	}
 	return varsCount, nil
 }
@@ -303,7 +305,7 @@ func funcs(args ...interface{}) (interface{}, error) {
 	userFuncs := user.ListFunctions()
 	funcsCount := uint64(len(userFuncs))
 	if funcsCount > 0 {
-		fmt.Printf("\n\tUser functions:\n")
+		fmt.Fprintf(outStream, "\n\tUser functions:\n")
 		keysList := make([]string, 0, len(userFuncs))
 		for key := range userFuncs {
 			keysList = append(keysList, key)
@@ -311,16 +313,16 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := userFuncs[key]
-			fmt.Printf("\t\t%-12s%s\n", key, value.Variants[0])
+			fmt.Fprintf(outStream, "\t\t%-12s%s\n", key, value.Variants[0])
 			for v := 1; v < len(value.Variants); v++ {
-				fmt.Printf("\t\t%12s%s\n", "", value.Variants[v])
+				fmt.Fprintf(outStream, "\t\t%12s%s\n", "", value.Variants[v])
 			}
 		}
 	} else {
-		fmt.Printf("\n\tThere are no user defined functions.\n")
+		fmt.Fprintf(outStream, "\n\tThere are no user defined functions.\n")
 	}
 	if len(*bFuncs) > 0 {
-		fmt.Printf("\n\tBuiltin functions:\n")
+		fmt.Fprintf(outStream, "\n\tBuiltin functions:\n")
 		keysList := make([]string, 0, len(*bFuncs))
 		for key := range *bFuncs {
 			keysList = append(keysList, key)
@@ -328,10 +330,10 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := (*bFuncs)[key]
-			fmt.Printf("\t\t%-12s%-12s - %s\n", key, value.Args, value.Desc)
+			fmt.Fprintf(outStream, "\t\t%-12s%-12s - %s\n", key, value.Args, value.Desc)
 		}
 	} else {
-		fmt.Printf("\n\tThere are no builtin functions.\n")
+		fmt.Fprintf(outStream, "\n\tThere are no builtin functions.\n")
 	}
 	return funcsCount, nil
 }
@@ -424,7 +426,7 @@ func save(args ...interface{}) (interface{}, error) {
 	// Save environment
 	savePath, err := getEnvPath(envName)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' save failed: unable to get access to file\n", envName)
+		fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: unable to get access to file\n", envName)
 		return false, nil
 	}
 	saveData := saveStruct{
@@ -437,7 +439,7 @@ func save(args ...interface{}) (interface{}, error) {
 		if success {
 			saveData.Description = desc
 		} else {
-			fmt.Printf("\n\tEnvironment '%s' save failed: second argument must be a string\n", envName)
+			fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: second argument must be a string\n", envName)
 			return false, nil
 		}
 	} else {
@@ -445,16 +447,16 @@ func save(args ...interface{}) (interface{}, error) {
 	}
 	saveJson, err := json.Marshal(saveData)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' save failed: unable to create data\n", envName)
+		fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: unable to create data\n", envName)
 		return false, nil
 	}
 	err = os.WriteFile(savePath, saveJson, 0666)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' save failed: unable to write file\n", envName)
+		fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: unable to write file\n", envName)
 		return false, nil
 	}
 
-	fmt.Printf("\n\tSaving environment as '%s'\n", envName)
+	fmt.Fprintf(outStream, "\n\tSaving environment as '%s'\n", envName)
 	return true, nil
 }
 
@@ -472,7 +474,7 @@ func load(args ...interface{}) (interface{}, error) {
 	// Load environment
 	loadData, err := getEnvContent(envName)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' load failed: %s\n", envName, err)
+		fmt.Fprintf(outStream, "\n\tEnvironment '%s' load failed: %s\n", envName, err)
 		return false, nil
 	}
 
@@ -487,7 +489,7 @@ func load(args ...interface{}) (interface{}, error) {
 		user.SetFunction(name, val)
 	}
 
-	fmt.Printf("\n\tEnvironment '%s' loaded\n", envName)
+	fmt.Fprintf(outStream, "\n\tEnvironment '%s' loaded\n", envName)
 	return true, nil
 }
 
@@ -505,7 +507,7 @@ func importUnit(args ...interface{}) (interface{}, error) {
 	// Load environment
 	loadData, err := getEnvContent(envName)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment '%s' import failed: %s\n", envName, err)
+		fmt.Fprintf(outStream, "\n\tEnvironment '%s' import failed: %s\n", envName, err)
 		return false, nil
 	}
 
@@ -546,7 +548,7 @@ func importUnit(args ...interface{}) (interface{}, error) {
 		}
 	}
 
-	fmt.Printf("\n\tImported %d units from environment '%s'\n", loadedUnits, envName)
+	fmt.Fprintf(outStream, "\n\tImported %d units from environment '%s'\n", loadedUnits, envName)
 	return true, nil
 }
 
@@ -563,18 +565,18 @@ func listEnv(args ...interface{}) (interface{}, error) {
 
 	f, err := os.Open(envDir)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment list failed: unable to get access to the directory with environments\n")
+		fmt.Fprintf(outStream, "\n\tEnvironment list failed: unable to get access to the directory with environments\n")
 		return false, nil
 	}
 	files, err := f.Readdir(0)
 	if err != nil {
-		fmt.Printf("\n\tEnvironment list failed: unable to read the directory with environments\n")
+		fmt.Fprintf(outStream, "\n\tEnvironment list failed: unable to read the directory with environments\n")
 		return false, nil
 	}
 
 	if len(files) > 0 {
 		envCount := 0
-		fmt.Printf("\n\tAvailable environments:\n")
+		fmt.Fprintf(outStream, "\n\tAvailable environments:\n")
 		for _, v := range files {
 			fname := v.Name()
 			extIndex := len(fname) - 5
@@ -589,23 +591,23 @@ func listEnv(args ...interface{}) (interface{}, error) {
 				continue
 			}
 
-			fmt.Printf("\t\t%s", fname)
+			fmt.Fprintf(outStream, "\t\t%s", fname)
 			if env.Description != "" {
-				fmt.Printf(" - %s", env.Description)
+				fmt.Fprintf(outStream, " - %s", env.Description)
 			}
-			fmt.Printf("\n")
+			fmt.Fprintf(outStream, "\n")
 
 			envCount++
 		}
 		return uint64(envCount), nil
 	} else {
-		fmt.Printf("\n\tThere are no saved environments\n")
+		fmt.Fprintf(outStream, "\n\tThere are no saved environments\n")
 		return uint64(0), nil
 	}
 }
 
 func clear(args ...interface{}) (interface{}, error) {
-	fmt.Printf("\x1bc")
+	fmt.Fprintf(outStream, "\x1bc")
 	return nil, nil
 }
 
@@ -615,13 +617,18 @@ func exit(args ...interface{}) (interface{}, error) {
 	return exitCode, nil
 }
 
-func FuncsInit() {
+func FuncsInit(out io.Writer) {
 	bFuncs = &functions
+	outStream = out
 }
 
 func HasFunction(name string) bool {
 	_, found := functions[name]
 	return found
+}
+
+func RegisterFunction(name string, function Func) {
+	functions[name] = function
 }
 
 func GetFunction(name string) (function Func, found bool) {

@@ -18,6 +18,10 @@ func HasConstant(name string) bool {
 	return found
 }
 
+func RegisterConstant[T string | bool | uint64 | int64 | float64](name string, value T) {
+	constants[name] = value
+}
+
 func GetConstant(name string) (val interface{}, found bool) {
 	val, found = constants[name]
 	return

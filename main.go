@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	builtin.FuncsInit()
+	builtin.FuncsInit(os.Stdout)
 
 	if len(os.Args) > 1 {
 		var input string

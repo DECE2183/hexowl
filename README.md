@@ -1,5 +1,6 @@
 # **hexowl**
 
+[![TryIt Card](https://img.shields.io/badge/try%20it-online-green)](https://dece2183.github.io/web-hexowl)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dece2183/hexowl)](https://goreportcard.com/report/github.com/dece2183/hexowl)
 [![Release](https://img.shields.io/github/v/release/dece2183/hexowl)](https://github.com/dece2183/hexowl/releases)
 

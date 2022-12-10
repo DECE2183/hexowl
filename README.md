@@ -1,4 +1,4 @@
-# **hexowl**
+# ![Logo](/.assets/hexowl-logo-full.svg)
 
 [![TryIt Card](https://img.shields.io/badge/try%20it-online-green)](https://dece2183.github.io/web-hexowl)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dece2183/hexowl)](https://goreportcard.com/report/github.com/dece2183/hexowl)
@@ -8,7 +8,7 @@
 
 The main purpose of hexowl is to perform operations on numbers regardless of their base. A single expression can contain decimal, hexadecimal, and binary numbers.
 
-![Work demonstration](/.github/assets/demo.gif)
+![Work demonstration](/.assets/demo.gif)
 
 ## Features
  - Support for operations on decimal, hexadecimal and binary numbers;

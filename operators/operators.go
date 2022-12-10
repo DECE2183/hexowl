@@ -314,27 +314,27 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			case utils.W_NUM_SCI:
 				num := strings.Split(w.Literal, "e")
 				var mantisse, order float64
-				mantisse, err = strconv.ParseFloat(num[0], 64)
+				mantisse, err = strconv.ParseFloat(strings.ReplaceAll(num[0], "_", ""), 64)
 				if err != nil {
 					return nil, fmt.Errorf("unable to parse mantisse part of literal '%s'", w.Literal)
 				}
-				order, err = strconv.ParseFloat(num[1], 64)
+				order, err = strconv.ParseFloat(strings.ReplaceAll(num[1], "_", ""), 64)
 				if err != nil {
 					return nil, fmt.Errorf("unable to parse order part of literal '%s'", w.Literal)
 				}
 				newOp.Result = mantisse * math.Pow(10, order)
 			case utils.W_NUM_DEC:
-				newOp.Result, err = strconv.ParseFloat(w.Literal, 64)
+				newOp.Result, err = strconv.ParseFloat(strings.ReplaceAll(w.Literal, "_", ""), 64)
 				if err != nil {
 					return nil, fmt.Errorf("unable to parse literal '%s' as number", w.Literal)
 				}
 			case utils.W_NUM_HEX:
-				newOp.Result, err = strconv.ParseUint(w.Literal, 16, 64)
+				newOp.Result, err = strconv.ParseUint(strings.ReplaceAll(w.Literal, "_", ""), 16, 64)
 				if err != nil {
 					return nil, fmt.Errorf("unable to parse literal '%s' as hex number", w.Literal)
 				}
 			case utils.W_NUM_BIN:
-				newOp.Result, err = strconv.ParseUint(w.Literal, 2, 64)
+				newOp.Result, err = strconv.ParseUint(strings.ReplaceAll(w.Literal, "_", ""), 2, 64)
 				if err != nil {
 					return nil, fmt.Errorf("unable to parse literal '%s' as bin number", w.Literal)
 				}

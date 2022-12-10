@@ -9,10 +9,10 @@ import (
 
 const (
 	stringLiterals   = "_@QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
-	sciLiterals      = "0123456789.eE-+"
-	decLiterals      = "0123456789."
-	hexLiterals      = "0123456789ABCDEFabcdef"
-	binLiterals      = "01"
+	sciLiterals      = "0123456789.eE-+_"
+	decLiterals      = "0123456789._"
+	hexLiterals      = "0123456789ABCDEFabcdef_"
+	binLiterals      = "01_"
 	controlLiterals  = "()"
 	operatorLiterals = ";#?:=-+*/%^!&|~<>,"
 )

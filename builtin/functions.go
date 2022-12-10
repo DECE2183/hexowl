@@ -6,8 +6,10 @@ import (
 	"io"
 	"math"
 	"math/bits"
+	"math/rand"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/dece2183/hexowl/user"
 	"github.com/dece2183/hexowl/utils"
@@ -104,6 +106,11 @@ var functions = FuncMap{
 		Args: "(x)",
 		Desc: "The greatest integer value less than or equal to x",
 		Exec: floor,
+	},
+	"rand": Func{
+		Args: "(a,b)",
+		Desc: "The random number in the range [a,b) or [0,1) if no arguments are passed",
+		Exec: random,
 	},
 	"popcnt": {
 		Args: "(x)",
@@ -242,6 +249,28 @@ func floor(args ...interface{}) (interface{}, error) {
 	return math.Floor(utils.ToNumber[float64](args[0])), nil
 }
 
+func random(args ...interface{}) (interface{}, error) {
+	argslen := len(args)
+	if argslen == 0 || args[0] == nil {
+		return rand.Float64(), nil
+	} else {
+		if argslen == 1 {
+			a := utils.ToNumber[int64](args[0])
+			if a < 0 {
+				return 0, fmt.Errorf("the first argument must be positive")
+			}
+			return rand.Int63n(a), nil
+		} else {
+			a := utils.ToNumber[int64](args[0])
+			b := utils.ToNumber[int64](args[1])
+			if b < a {
+				return 0, fmt.Errorf("the first argument must be greater")
+			}
+			return rand.Int63n(b-a) + a, nil
+		}
+	}
+}
+
 func popcount(args ...interface{}) (interface{}, error) {
 	return uint64(bits.OnesCount64(utils.ToNumber[uint64](args[0]))), nil
 }
@@ -270,7 +299,7 @@ func vars(args ...interface{}) (interface{}, error) {
 		}
 		sort.Strings(keysList)
 		for _, key := range keysList {
-			if key == "help" {
+			if key == "help" || key == "version" {
 				continue
 			}
 			fmt.Fprintf(outStream, "\t\t[%s] = %v\n", key, constants[key])
@@ -620,6 +649,7 @@ func exit(args ...interface{}) (interface{}, error) {
 func FuncsInit(out io.Writer) {
 	bFuncs = &functions
 	outStream = out
+	rand.Seed(time.Now().UnixNano())
 }
 
 func HasFunction(name string) bool {

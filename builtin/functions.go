@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dece2183/hexowl/user"
@@ -668,4 +669,13 @@ func GetFunction(name string) (function Func, found bool) {
 
 func ListFunctions() map[string]Func {
 	return functions
+}
+
+func PredictFunction(word string) string {
+	for k := range functions {
+		if strings.Contains(k, word) {
+			return k
+		}
+	}
+	return ""
 }

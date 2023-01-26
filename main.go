@@ -7,12 +7,15 @@ import (
 	"time"
 
 	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/input"
 	"github.com/dece2183/hexowl/operators"
 	"github.com/dece2183/hexowl/utils"
 )
 
 func main() {
 	builtin.FuncsInit(os.Stdout)
+
+	input.EnableRawMode()
 
 	if len(os.Args) > 1 {
 		var input string
@@ -52,12 +55,13 @@ func main() {
 }
 
 func prompt(reader *bufio.Reader) []utils.Word {
-	var input string
+	var inputString string
 
-	fmt.Printf(">: ")
-	input, _ = reader.ReadString('\n')
+	// fmt.Printf(">: ")
+	// inputString, _ = reader.ReadString('\n')
+	inputString, _ = input.Prompt(os.Stdout, reader)
 
-	return utils.ParsePrompt(input)
+	return utils.ParsePrompt(inputString)
 }
 
 func calculate(words []utils.Word) error {

@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	history []string
+	history    []string = make([]string, 1)
+	historyIdx int      = 0
 )
 
 func GetPrediction(word string) string {
@@ -41,10 +42,9 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 	rewriteInputLine(writer, "", 1)
 
 	var (
-		cursorPos  int
-		readString string
-		readRune   rune
-		readErr    error
+		cursorPos int
+		readRune  rune
+		readErr   error
 	)
 
 	for {
@@ -54,31 +54,47 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 		}
 
 		if unicode.IsPrint(readRune) {
-			if cursorPos < len(readString) {
-				readString = fmt.Sprintf("%s%c%s", readString[:cursorPos], readRune, readString[cursorPos:])
+			if historyIdx > 0 {
+				history[0] = history[historyIdx]
+				historyIdx = 0
+			}
+
+			if cursorPos < len(history[0]) {
+				history[0] = fmt.Sprintf("%s%c%s", history[0][:cursorPos], readRune, history[0][cursorPos:])
 			} else {
-				readString = fmt.Sprintf("%s%c", readString, readRune)
+				history[0] = fmt.Sprintf("%s%c", history[0], readRune)
 			}
 
 			cursorPos++
-			rewriteInputLine(writer, readString, cursorPos)
+			rewriteInputLine(writer, history[0], cursorPos)
 		} else {
 			switch readRune {
 			case '\n':
 				// new line
 				fmt.Fprint(writer, "\n")
-				return readString, nil
+				if historyIdx == 0 {
+					history = append([]string{""}, history...)
+					return history[1], nil
+				} else {
+					defer func() { historyIdx = 0 }()
+					return history[historyIdx], nil
+				}
 			case '\u007F':
 				// backspace
-				if len(readString) > 0 && cursorPos > 0 {
-					if cursorPos < len(readString) {
-						readString = readString[:cursorPos-1] + readString[cursorPos:]
+				if historyIdx > 0 {
+					history[0] = history[historyIdx]
+					historyIdx = 0
+				}
+
+				if len(history[0]) > 0 && cursorPos > 0 {
+					if cursorPos < len(history[0]) {
+						history[0] = history[0][:cursorPos-1] + history[0][cursorPos:]
 					} else {
-						readString = readString[:cursorPos-1]
+						history[0] = history[0][:cursorPos-1]
 					}
 
 					cursorPos--
-					rewriteInputLine(writer, readString, cursorPos)
+					rewriteInputLine(writer, history[0], cursorPos)
 				}
 			case '\u001B':
 				// ANSI ESC command sequence
@@ -111,14 +127,30 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 				esc, _, _ = ansi.DecodeEscape(bseq)
 				switch esc {
 				case ansi.CUB:
+					// cursor left
 					if cursorPos > 0 {
 						cursorPos--
-						rewriteInputLine(writer, readString, cursorPos)
+						rewriteInputLine(writer, history[historyIdx], cursorPos)
 					}
 				case ansi.CUF:
-					if cursorPos < len(readString) {
+					// cursor right
+					if cursorPos < len(history[historyIdx]) {
 						cursorPos++
-						rewriteInputLine(writer, readString, cursorPos)
+						rewriteInputLine(writer, history[historyIdx], cursorPos)
+					}
+				case ansi.CUU:
+					// cursor up
+					if historyIdx < len(history)-1 {
+						historyIdx++
+						cursorPos = len(history[historyIdx])
+						rewriteInputLine(writer, history[historyIdx], cursorPos)
+					}
+				case ansi.CUD:
+					// cursor down
+					if historyIdx > 0 {
+						historyIdx--
+						cursorPos = len(history[historyIdx])
+						rewriteInputLine(writer, history[historyIdx], cursorPos)
 					}
 				}
 			}
@@ -126,10 +158,10 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 	}
 }
 
-func rewriteInputLine(writer io.Writer, str string, cpus int) {
+func rewriteInputLine(writer io.Writer, str string, cpos int) {
 	fmt.Fprintf(writer, "\n\033[1A\033[K>: %s", str)
 
-	coffset := len(str) - cpus
+	coffset := len(str) - cpos
 	if coffset > 0 {
 		fmt.Fprintf(writer, "\033[%dD", coffset)
 	}

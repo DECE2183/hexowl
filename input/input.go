@@ -7,8 +7,8 @@ import (
 	"unicode"
 
 	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/input/ansi"
 	"github.com/dece2183/hexowl/user"
-	"github.com/jcorbin/anansi/ansi"
 )
 
 var (
@@ -99,39 +99,27 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 			case '\u001B':
 				// ANSI ESC command sequence
 				var (
-					b    byte
-					bseq []byte
-					esc  ansi.Escape
-					// escArgs []byte
+					cmd  rune
+					args []int
 				)
 
-				b, readErr = reader.ReadByte()
-				if readErr != nil {
+				cmd, args = ansi.ReadCS(reader)
+				if cmd == 0 {
 					continue
 				}
 
-				esc = ansi.ESC(b)
-				if !esc.IsEscape() {
-					continue
-				}
-
-				bseq = make([]byte, esc.Size()-1)
-
-				_, readErr = reader.Read(bseq)
-				if readErr != nil {
-					continue
-				}
-
-				bseq = append([]byte{byte(readRune), b}, bseq...)
-
-				esc, _, _ = ansi.DecodeEscape(bseq)
-				switch esc {
+				switch cmd {
 				case ansi.CUB:
 					// cursor left
-					if cursorPos > 0 {
-						cursorPos--
-						rewriteInputLine(writer, history[historyIdx], cursorPos)
+					if args[0] > 0 {
+						cursorPos -= int(args[0])
+					} else {
+						cursorPos -= 1
 					}
+					if cursorPos < 0 {
+						cursorPos = 0
+					}
+					rewriteInputLine(writer, history[historyIdx], cursorPos)
 				case ansi.CUF:
 					// cursor right
 					if cursorPos < len(history[historyIdx]) {
@@ -152,6 +140,36 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 						cursorPos = len(history[historyIdx])
 						rewriteInputLine(writer, history[historyIdx], cursorPos)
 					}
+				case ansi.CPL:
+					// end
+					cursorPos = len(history[historyIdx])
+					rewriteInputLine(writer, history[historyIdx], cursorPos)
+				case ansi.CUP:
+					// home
+					cursorPos = 0
+					rewriteInputLine(writer, history[historyIdx], cursorPos)
+				case ansi.VT:
+					switch args[0] {
+					case 1, 7:
+						// home
+						cursorPos = 0
+						rewriteInputLine(writer, history[historyIdx], cursorPos)
+					case 4, 8:
+						// end
+						cursorPos = len(history[historyIdx])
+						rewriteInputLine(writer, history[historyIdx], cursorPos)
+					case 3:
+						// forward delete
+						if historyIdx > 0 {
+							history[0] = history[historyIdx]
+							historyIdx = 0
+						}
+
+						if cursorPos < len(history[0]) {
+							history[0] = history[0][:cursorPos] + history[0][cursorPos+1:]
+							rewriteInputLine(writer, history[0], cursorPos)
+						}
+					}
 				}
 			}
 		}
@@ -159,10 +177,10 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 }
 
 func rewriteInputLine(writer io.Writer, str string, cpos int) {
-	fmt.Fprintf(writer, "\n\033[1A\033[K>: %s", str)
+	fmt.Fprintf(writer, "\n%s%s>: %s", ansi.CreateCS(ansi.CUU, 1), ansi.CreateCS(ansi.EL), str)
 
 	coffset := len(str) - cpos
 	if coffset > 0 {
-		fmt.Fprintf(writer, "\033[%dD", coffset)
+		ansi.WriteCS(writer, ansi.CUB, int64(coffset))
 	}
 }

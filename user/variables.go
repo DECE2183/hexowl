@@ -1,5 +1,7 @@
 package user
 
+import "strings"
+
 var variables = map[string]interface{}{}
 
 func HasVariable(name string) bool {
@@ -28,4 +30,13 @@ func DropVariables() {
 	for name := range variables {
 		delete(variables, name)
 	}
+}
+
+func PredictVariable(word string) string {
+	for k := range variables {
+		if strings.Contains(k, word) {
+			return k
+		}
+	}
+	return ""
 }

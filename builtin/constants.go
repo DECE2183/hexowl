@@ -1,6 +1,9 @@
 package builtin
 
-import "math"
+import (
+	"math"
+	"strings"
+)
 
 var constants = map[string]interface{}{
 	"nil":     nil,
@@ -30,4 +33,13 @@ func GetConstant(name string) (val interface{}, found bool) {
 
 func ListConstants() map[string]interface{} {
 	return constants
+}
+
+func PredictConstant(word string) string {
+	for k := range constants {
+		if strings.Contains(k, word) {
+			return k
+		}
+	}
+	return ""
 }

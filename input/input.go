@@ -69,7 +69,7 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 			rewriteInputLine(writer, history[0], cursorPos)
 		} else {
 			switch readRune {
-			case '\n':
+			case '\n', '\r':
 				// new line
 				fmt.Fprint(writer, "\n")
 				if historyIdx == 0 {

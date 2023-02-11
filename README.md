@@ -26,7 +26,7 @@ go install github.com/dece2183/hexowl@latest
 
 # Building
 
-~~There are no dependencies~~, so you can simply type a build command in the cloned repository folder.
+There are no dependencies, so you can simply type a build command in the cloned repository folder.
 
 ```bash
 go build

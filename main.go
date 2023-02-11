@@ -56,11 +56,7 @@ func main() {
 
 func prompt(reader *bufio.Reader) []utils.Word {
 	var inputString string
-
-	// fmt.Printf(">: ")
-	// inputString, _ = reader.ReadString('\n')
 	inputString, _ = input.Prompt(os.Stdout, reader)
-
 	return utils.ParsePrompt(inputString)
 }
 

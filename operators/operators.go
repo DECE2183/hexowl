@@ -3,7 +3,6 @@ package operators
 import (
 	"fmt"
 	"math"
-	"math/bits"
 	"strconv"
 	"strings"
 
@@ -14,69 +13,12 @@ import (
 
 type operatorType int
 
-// Operator types
-const (
-	OP_NONE operatorType = iota
-
-	OP_DECLFUNC operatorType = iota
-
-	OP_ASSIGN       operatorType = iota
-	OP_LOCALASSIGN  operatorType = iota
-	OP_DECREMENT    operatorType = iota
-	OP_INCREMENT    operatorType = iota
-	OP_ASSIGNMUL    operatorType = iota
-	OP_ASSIGNDIV    operatorType = iota
-	OP_ASSIGNBITAND operatorType = iota
-	OP_ASSIGNBITOR  operatorType = iota
-
-	OP_LOGICNOT operatorType = iota
-	OP_LOGICOR  operatorType = iota
-	OP_LOGICAND operatorType = iota
-	OP_EQUALITY operatorType = iota
-	OP_NOTEQ    operatorType = iota
-	OP_MORE     operatorType = iota
-	OP_LESS     operatorType = iota
-	OP_MOREEQ   operatorType = iota
-	OP_LESSEQ   operatorType = iota
-
-	OP_MINUS    operatorType = iota
-	OP_PLUS     operatorType = iota
-	OP_MULTIPLY operatorType = iota
-	OP_DIVIDE   operatorType = iota
-	OP_MODULO   operatorType = iota
-	OP_POWER    operatorType = iota
-
-	OP_LEFTSHIFT  operatorType = iota
-	OP_RIGHTSHIFT operatorType = iota
-	OP_BITOR      operatorType = iota
-	OP_BITAND     operatorType = iota
-	OP_BITXOR     operatorType = iota
-	OP_BITCLEAR   operatorType = iota
-	OP_BITINVERSE operatorType = iota
-	OP_POPCNT     operatorType = iota
-
-	OP_ENUMERATE operatorType = iota
-	OP_SEQUENCE  operatorType = iota
-
-	OP_LOCALVAR    operatorType = iota
-	OP_USERVAR     operatorType = iota
-	OP_CONSTANT    operatorType = iota
-	OP_USERFUNC    operatorType = iota
-	OP_BUILTINFUNC operatorType = iota
-)
-
 type Operator struct {
 	Type     operatorType
 	OperandA *Operator
 	OperandB *Operator
 	Result   interface{}
 }
-
-var (
-	operatorsPriorityList = [...]string{
-		"->", ";", "=", ":=", "-=", "+=", "*=", "/=", "&=", "|=", ",", "||", "&&", "==", "!=", "!", ">", "<", ">=", "<=", "+", "-", "*", "**", "/", "%", "<<", ">>", "|", "&", "^", "&^", "&~", "~", "#",
-	}
-)
 
 func getLocalVariable(localVars map[string]interface{}, literal string) (val interface{}, found bool) {
 	if localVars == nil {
@@ -171,76 +113,10 @@ func execUserFunc(f user.Func, args []interface{}) (result interface{}, err erro
 }
 
 func GetType(op string) operatorType {
-	switch op {
-	case ";":
-		return OP_SEQUENCE
-	case "->":
-		return OP_DECLFUNC
-	case "=":
-		return OP_ASSIGN
-	case ":=":
-		return OP_LOCALASSIGN
-	case "-=":
-		return OP_DECREMENT
-	case "+=":
-		return OP_INCREMENT
-	case "*=":
-		return OP_ASSIGNMUL
-	case "/=":
-		return OP_ASSIGNDIV
-	case "&=":
-		return OP_ASSIGNBITAND
-	case "|=":
-		return OP_ASSIGNBITOR
-	case ",":
-		return OP_ENUMERATE
-	case "!":
-		return OP_LOGICNOT
-	case "||":
-		return OP_LOGICOR
-	case "&&":
-		return OP_LOGICAND
-	case "==":
-		return OP_EQUALITY
-	case "!=":
-		return OP_NOTEQ
-	case ">":
-		return OP_MORE
-	case "<":
-		return OP_LESS
-	case ">=":
-		return OP_MOREEQ
-	case "<=":
-		return OP_LESSEQ
-	case "-":
-		return OP_MINUS
-	case "+":
-		return OP_PLUS
-	case "*":
-		return OP_MULTIPLY
-	case "**":
-		return OP_POWER
-	case "/":
-		return OP_DIVIDE
-	case "%":
-		return OP_MODULO
-	case "<<":
-		return OP_LEFTSHIFT
-	case ">>":
-		return OP_RIGHTSHIFT
-	case "|":
-		return OP_BITOR
-	case "&":
-		return OP_BITAND
-	case "^":
-		return OP_BITXOR
-	case "&^", "&~":
-		return OP_BITCLEAR
-	case "~":
-		return OP_BITINVERSE
-	case "#":
-		return OP_POPCNT
-	default:
+	t, ok := opStringRepresent[op]
+	if ok {
+		return t
+	} else {
 		return -1
 	}
 }
@@ -347,7 +223,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 		return newOp, nil
 	}
 
-	minPriority := len(operatorsPriorityList)
+	minPriority := OP_COUNT
 	minPriorityIndex := 0
 	var minPriorityWord *utils.Word
 
@@ -404,21 +280,14 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			continue
 		}
 
-		prio := -1
+		prio := GetType(w.Literal)
 
-		if GetType(w.Literal) == OP_MINUS && (i == 0 || words[i-1].Type == utils.W_OP) {
+		if prio == OP_MINUS && (i == 0 || words[i-1].Type == utils.W_OP) {
 			// If it is a single minus operator give it the max prioriy
-			prio = len(operatorsPriorityList)
-		} else {
-			for pr, lit := range operatorsPriorityList {
-				if lit == w.Literal {
-					prio = pr
-					break
-				}
-			}
+			prio = OP_COUNT
 		}
 
-		if prio < 0 {
+		if prio <= 0 {
 			return nil, fmt.Errorf("unknown operator '%s'", w.Literal)
 		}
 
@@ -599,163 +468,5 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 		}
 	}
 
-	switch op.Type {
-	case OP_SEQUENCE:
-		if op.OperandB != nil {
-			op.Result = op.OperandB.Result
-		} else {
-			return nil, nil
-		}
-	case OP_DECLFUNC:
-		leftSideWords := op.OperandA.Result.([]utils.Word)
-		rightSideWords := op.OperandB.Result.([]utils.Word)
-		funcName := leftSideWords[0].Literal
-		newFunc := user.FuncVariant{
-			Args: leftSideWords[2 : len(leftSideWords)-1],
-			Body: rightSideWords,
-		}
-		user.SetFunctionVariant(funcName, newFunc)
-	case OP_ASSIGN, OP_LOCALASSIGN, OP_DECREMENT, OP_INCREMENT, OP_ASSIGNMUL, OP_ASSIGNDIV, OP_ASSIGNBITAND, OP_ASSIGNBITOR:
-		switch op.Type {
-		case OP_ASSIGN:
-			op.Result = op.OperandB.Result
-		case OP_LOCALASSIGN:
-			op.Result = op.OperandB.Result
-			localVars[op.OperandA.Result.(string)] = op.Result
-			return op.Result, nil
-		case OP_DECREMENT:
-			op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
-		case OP_INCREMENT:
-			op.Result = utils.ToNumber[float64](op.OperandA.Result) + utils.ToNumber[float64](op.OperandB.Result)
-		case OP_ASSIGNMUL:
-			op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
-		case OP_ASSIGNDIV:
-			opB := utils.ToNumber[float64](op.OperandB.Result)
-			if opB == 0 {
-				op.Result = math.Inf(int(utils.ToNumber[float64](op.OperandA.Result)))
-			} else {
-				op.Result = utils.ToNumber[float64](op.OperandA.Result) / opB
-			}
-		case OP_ASSIGNBITAND:
-			op.Result = utils.ToNumber[uint64](op.OperandA.Result) & utils.ToNumber[uint64](op.OperandB.Result)
-		case OP_ASSIGNBITOR:
-			op.Result = utils.ToNumber[uint64](op.OperandA.Result) | utils.ToNumber[uint64](op.OperandB.Result)
-		}
-		switch op.OperandA.Type {
-		case OP_NONE:
-			user.SetVariable(op.OperandA.Result.(string), op.Result)
-		case OP_USERVAR:
-			user.SetVariable(op.OperandA.OperandA.Result.(string), op.Result)
-		case OP_LOCALVAR:
-			localVars[op.OperandA.OperandA.Result.(string)] = op.Result
-		default:
-			return nil, fmt.Errorf("try to assign non user variable")
-		}
-	case OP_LOGICNOT:
-		op.Result = !utils.ToBool(op.OperandB.Result)
-	case OP_LOGICOR:
-		op.Result = utils.ToBool(op.OperandA.Result) || utils.ToBool(op.OperandB.Result)
-	case OP_LOGICAND:
-		op.Result = utils.ToBool(op.OperandA.Result) && utils.ToBool(op.OperandB.Result)
-	case OP_EQUALITY:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) == utils.ToNumber[float64](op.OperandB.Result)
-	case OP_NOTEQ:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) != utils.ToNumber[float64](op.OperandB.Result)
-	case OP_MORE:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) > utils.ToNumber[float64](op.OperandB.Result)
-	case OP_LESS:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) < utils.ToNumber[float64](op.OperandB.Result)
-	case OP_MOREEQ:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) >= utils.ToNumber[float64](op.OperandB.Result)
-	case OP_LESSEQ:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) <= utils.ToNumber[float64](op.OperandB.Result)
-	case OP_MINUS:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
-	case OP_PLUS:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) + utils.ToNumber[float64](op.OperandB.Result)
-	case OP_MULTIPLY:
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
-	case OP_DIVIDE:
-		opB := utils.ToNumber[float64](op.OperandB.Result)
-		if opB == 0 {
-			op.Result = math.Inf(int(utils.ToNumber[float64](op.OperandA.Result)))
-		} else {
-			op.Result = utils.ToNumber[float64](op.OperandA.Result) / opB
-		}
-	case OP_MODULO:
-		opB := utils.ToNumber[int64](op.OperandB.Result)
-		if opB == 0 {
-			op.Result = math.Inf(1)
-		} else {
-			op.Result = utils.ToNumber[int64](op.OperandA.Result) % opB
-		}
-	case OP_POWER:
-		op.Result = math.Pow(utils.ToNumber[float64](op.OperandA.Result), utils.ToNumber[float64](op.OperandB.Result))
-	case OP_LEFTSHIFT:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) << utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_RIGHTSHIFT:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) >> utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_BITOR:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) | utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_BITAND:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) & utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_BITXOR:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) ^ utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_BITCLEAR:
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) &^ utils.ToNumber[uint64](op.OperandB.Result)
-	case OP_POPCNT:
-		op.Result = uint64(bits.OnesCount64(utils.ToNumber[uint64](op.OperandB.Result)))
-	case OP_BITINVERSE:
-		op.Result = 0xFFFFFFFFFFFFFFFF ^ utils.ToNumber[uint64](op.OperandB.Result)
-
-	case OP_ENUMERATE:
-		switch op.OperandA.Result.(type) {
-		case []interface{}:
-			break
-		case nil:
-			op.OperandA.Result = make([]interface{}, 0)
-		default:
-			op.OperandA.Result = []interface{}{op.OperandA.Result}
-		}
-		switch op.OperandB.Result.(type) {
-		case []interface{}, nil:
-			break
-		default:
-			op.OperandB.Result = []interface{}{op.OperandB.Result}
-		}
-		if op.OperandB.Result == nil {
-			op.Result = op.OperandA.Result
-		} else {
-			op.Result = append(op.OperandA.Result.([]interface{}), op.OperandB.Result.([]interface{})...)
-		}
-
-	case OP_BUILTINFUNC:
-		f, _ := builtin.GetFunction(op.OperandA.Result.(string))
-
-		switch op.OperandB.Result.(type) {
-		case []interface{}:
-			op.Result, err = f.Exec(op.OperandB.Result.([]interface{})...)
-		default:
-			op.Result, err = f.Exec(op.OperandB.Result)
-		}
-	case OP_USERFUNC:
-		var args []interface{}
-		fname := op.OperandA.Result.(string)
-		f, _ := user.GetFunction(fname)
-
-		switch op.OperandB.Result.(type) {
-		case []interface{}:
-			args = op.OperandB.Result.([]interface{})
-		default:
-			args = []interface{}{op.OperandB.Result}
-		}
-
-		op.Result, err = execUserFunc(f, args)
-		if err != nil {
-			return nil, fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v; (%s)", fname, args, err)
-		}
-	}
-
-	// fmt.Println(op.Result)
-	return op.Result, err
+	return opDoAction(op, localVars)
 }

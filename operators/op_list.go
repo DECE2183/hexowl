@@ -31,17 +31,17 @@ const (
 	OP_PLUS     operatorType = iota
 	OP_MINUS    operatorType = iota
 	OP_MULTIPLY operatorType = iota
-	OP_POWER    operatorType = iota
 	OP_DIVIDE   operatorType = iota
 	OP_MODULO   operatorType = iota
+	OP_POWER    operatorType = iota
 
-	OP_LEFTSHIFT  operatorType = iota
-	OP_RIGHTSHIFT operatorType = iota
 	OP_BITOR      operatorType = iota
 	OP_BITAND     operatorType = iota
 	OP_BITXOR     operatorType = iota
 	OP_BITCLEAR   operatorType = iota
 	OP_BITINVERSE operatorType = iota
+	OP_LEFTSHIFT  operatorType = iota
+	OP_RIGHTSHIFT operatorType = iota
 
 	OP_LOGICNOT operatorType = iota
 	OP_POPCNT   operatorType = iota
@@ -83,18 +83,18 @@ var opStringRepresent = map[string]operatorType{
 	"+":  OP_PLUS,
 	"-":  OP_MINUS,
 	"*":  OP_MULTIPLY,
-	"**": OP_POWER,
 	"/":  OP_DIVIDE,
 	"%":  OP_MODULO,
+	"**": OP_POWER,
 
-	"<<": OP_LEFTSHIFT,
-	">>": OP_RIGHTSHIFT,
 	"|":  OP_BITOR,
 	"&":  OP_BITAND,
 	"^":  OP_BITXOR,
 	"&^": OP_BITCLEAR,
 	"&~": OP_BITCLEAR,
 	"~":  OP_BITINVERSE,
+	"<<": OP_LEFTSHIFT,
+	">>": OP_RIGHTSHIFT,
 
 	"!": OP_LOGICNOT,
 	"#": OP_POPCNT,

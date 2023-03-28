@@ -72,12 +72,16 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 			case '\n', '\r':
 				// new line
 				fmt.Fprint(writer, "\n")
-				if historyIdx == 0 {
+				if historyIdx != 0 {
+					beg := history[1:historyIdx]
+					end := history[historyIdx+1:]
+					line := history[historyIdx]
+					history = append([]string{"", line}, append(beg, end...)...)
+					historyIdx = 0
+					return line, nil
+				} else {
 					history = append([]string{""}, history...)
 					return history[1], nil
-				} else {
-					defer func() { historyIdx = 0 }()
-					return history[historyIdx], nil
 				}
 			case '\u007F':
 				// backspace

@@ -19,13 +19,18 @@ func main() {
 
 	if len(os.Args) > 1 {
 		var input string
+		var words []utils.Word
+		var err error
 
 		for i := 1; i < len(os.Args); i++ {
+			if os.Args[i] == "--ignore" {
+				goto ignoreArgs
+			}
 			input += os.Args[i]
 		}
 
-		words := utils.ParsePrompt(input)
-		err := calculate(words)
+		words = utils.ParsePrompt(input)
+		err = calculate(words)
 		if err != nil {
 			fmt.Printf("\n\tError occurred: %s\n\n", err)
 			os.Exit(1)
@@ -33,22 +38,24 @@ func main() {
 
 		fmt.Println()
 		os.Exit(0)
-	} else {
-		var words []utils.Word
-		stdreader := bufio.NewReader(os.Stdin)
 
-		for {
-			words = prompt(stdreader)
-			if len(words) > 0 {
-				calcBeginTime := time.Now()
-				err := calculate(words)
-				calcTime := time.Since(calcBeginTime)
+	ignoreArgs:
+	}
 
-				if err != nil {
-					fmt.Printf("\n\tError occurred: %s\n\n", err)
-				} else {
-					fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
-				}
+	var words []utils.Word
+	stdreader := bufio.NewReader(os.Stdin)
+
+	for {
+		words = prompt(stdreader)
+		if len(words) > 0 {
+			calcBeginTime := time.Now()
+			err := calculate(words)
+			calcTime := time.Since(calcBeginTime)
+
+			if err != nil {
+				fmt.Printf("\n\tError occurred: %s\n\n", err)
+			} else {
+				fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
 			}
 		}
 	}

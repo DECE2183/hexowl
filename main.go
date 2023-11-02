@@ -27,6 +27,8 @@ func main() {
 		for i := 1; i < len(os.Args); i++ {
 			if os.Args[i][0] == '-' {
 				switch os.Args[i] {
+				case "-ignore", "--ignore":
+					goto ignoreArgs
 				case "-prof", "--prof":
 					mux := http.NewServeMux()
 					mux.HandleFunc("/hxl-pprof/", netpprof.Index)
@@ -54,6 +56,8 @@ func main() {
 			fmt.Println()
 			os.Exit(0)
 		}
+
+	ignoreArgs:
 	}
 
 	var words []utils.Word

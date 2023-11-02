@@ -8,6 +8,7 @@
 hexowl
 *.deb
 *.pkg.tar.zst
+*.prof
 
 # Test binary, built with `go test -c`
 *.test

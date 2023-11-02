@@ -4,51 +4,73 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/dece2183/hexowl/builtin"
 	"github.com/dece2183/hexowl/input"
 	"github.com/dece2183/hexowl/operators"
 	"github.com/dece2183/hexowl/utils"
+
+	"net/http"
+	netpprof "net/http/pprof"
 )
+
+var profileEnabled bool
 
 func main() {
 	builtin.FuncsInit(os.Stdout)
 
-	input.EnableRawMode()
-
 	if len(os.Args) > 1 {
-		var input string
+		var expr string
 
 		for i := 1; i < len(os.Args); i++ {
-			input += os.Args[i]
-		}
-
-		words := utils.ParsePrompt(input)
-		err := calculate(words)
-		if err != nil {
-			fmt.Printf("\n\tError occurred: %s\n\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println()
-		os.Exit(0)
-	} else {
-		var words []utils.Word
-		stdreader := bufio.NewReader(os.Stdin)
-
-		for {
-			words = prompt(stdreader)
-			if len(words) > 0 {
-				calcBeginTime := time.Now()
-				err := calculate(words)
-				calcTime := time.Since(calcBeginTime)
-
-				if err != nil {
-					fmt.Printf("\n\tError occurred: %s\n\n", err)
-				} else {
-					fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
+			if os.Args[i][0] == '-' {
+				switch os.Args[i] {
+				case "-prof", "--prof":
+					mux := http.NewServeMux()
+					mux.HandleFunc("/hxl-pprof/", netpprof.Index)
+					mux.HandleFunc("/hxl-pprof/cmdline", netpprof.Cmdline)
+					mux.HandleFunc("/hxl-pprof/profile", netpprof.Profile)
+					mux.HandleFunc("/hxl-pprof/symbol", netpprof.Symbol)
+					mux.HandleFunc("/hxl-pprof/trace", netpprof.Trace)
+					go http.ListenAndServe(":8080", mux)
+					fmt.Print("\nprofiler enabled at http://localhost:8080/hxl-pprof/profile\n\n")
+					profileEnabled = true
 				}
+			} else {
+				expr += os.Args[i]
+			}
+		}
+
+		if len(expr) > 0 {
+			words := utils.ParsePrompt(expr)
+			err := calculate(words)
+			if err != nil {
+				fmt.Printf("\n\tError occurred: %s\n\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Println()
+			os.Exit(0)
+		}
+	}
+
+	var words []utils.Word
+	input.EnableRawMode()
+	stdreader := bufio.NewReader(os.Stdin)
+
+	for {
+		words = prompt(stdreader)
+		if len(words) > 0 {
+			calcBeginTime := time.Now()
+			err := calculate(words)
+			calcTime := time.Since(calcBeginTime)
+
+			if err != nil {
+				fmt.Printf("\n\tError occurred: %s\n\n", err)
+			} else {
+				fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
 			}
 		}
 	}
@@ -102,6 +124,13 @@ func calculate(words []utils.Word) error {
 		default:
 			fmt.Printf("\n\tResult:\t%v\r\n", val)
 		}
+	}
+
+	if profileEnabled {
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		fmt.Printf("\n\tStack usage: %0.2f kB\r\n", float32(mem.StackSys)/1024)
+		fmt.Printf("\tHeap usage:  %0.2f kB\r\n", float32(mem.HeapInuse)/1024)
 	}
 
 	return nil

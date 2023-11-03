@@ -8,8 +8,8 @@ import (
 	"github.com/dece2183/hexowl/utils"
 )
 
-const testExpr = "a = pow(2,6)"
-const testExprRes = 64
+const testExpr = "a = pow(2,6) + (1)"
+const testExprRes = 65
 
 var testParseRes = []utils.Word{
 	{Type: utils.W_UNIT, Literal: "a"},
@@ -19,6 +19,10 @@ var testParseRes = []utils.Word{
 	{Type: utils.W_NUM_DEC, Literal: "2"},
 	{Type: utils.W_OP, Literal: ","},
 	{Type: utils.W_NUM_DEC, Literal: "6"},
+	{Type: utils.W_CTL, Literal: ")"},
+	{Type: utils.W_OP, Literal: "+"},
+	{Type: utils.W_CTL, Literal: "("},
+	{Type: utils.W_NUM_DEC, Literal: "1"},
 	{Type: utils.W_CTL, Literal: ")"},
 }
 

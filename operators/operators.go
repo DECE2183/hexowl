@@ -186,6 +186,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			return nil, fmt.Errorf("there is no function named '%s'", w.Literal)
 
 		case utils.W_NUM_DEC, utils.W_NUM_HEX, utils.W_NUM_BIN, utils.W_NUM_SCI:
+			// parse number constant
 			switch w.Type {
 			case utils.W_NUM_SCI:
 				num := strings.Split(w.Literal, "e")
@@ -316,6 +317,13 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 				}
 			} else {
 				newOp.OperandB = &Operator{}
+			}
+		} else if len(words) > 0 {
+			newOp.Type = OP_PLUS
+			newOp.OperandA = &Operator{}
+			newOp.OperandB, err = Generate(words, localVars)
+			if err != nil {
+				return nil, err
 			}
 		} else {
 			return nil, fmt.Errorf("operators not found")

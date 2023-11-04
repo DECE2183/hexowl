@@ -300,30 +300,32 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 	}
 
 	if minPriorityWord == nil {
-		if words[0].Type == utils.W_FUNC {
-			if len(words) < 3 {
-				return nil, fmt.Errorf("missing function '%s' arguments", words[0].Literal)
-			}
-			newOp.OperandA, err = Generate(words[:1], localVars)
-			if err != nil {
-				return nil, err
-			}
-			newOp.Type = newOp.OperandA.Type
-			newOp.OperandA.Type = OP_NONE
-			if len(words) > 3 {
-				newOp.OperandB, err = Generate(words[2:len(words)-1], localVars)
+		if len(words) > 0 {
+			if words[0].Type == utils.W_FUNC {
+				if len(words) < 3 {
+					return nil, fmt.Errorf("missing function '%s' arguments", words[0].Literal)
+				}
+				newOp.OperandA, err = Generate(words[:1], localVars)
 				if err != nil {
 					return nil, err
 				}
+				newOp.Type = newOp.OperandA.Type
+				newOp.OperandA.Type = OP_NONE
+				if len(words) > 3 {
+					newOp.OperandB, err = Generate(words[2:len(words)-1], localVars)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					newOp.OperandB = &Operator{}
+				}
 			} else {
-				newOp.OperandB = &Operator{}
-			}
-		} else if len(words) > 0 {
-			newOp.Type = OP_PLUS
-			newOp.OperandA = &Operator{}
-			newOp.OperandB, err = Generate(words, localVars)
-			if err != nil {
-				return nil, err
+				newOp.Type = OP_PLUS
+				newOp.OperandA = &Operator{}
+				newOp.OperandB, err = Generate(words, localVars)
+				if err != nil {
+					return nil, err
+				}
 			}
 		} else {
 			return nil, fmt.Errorf("operators not found")

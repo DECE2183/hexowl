@@ -10,11 +10,11 @@ import (
 	"github.com/dece2183/hexowl/utils"
 )
 
-type Action func(op *Operator, localVars map[string]interface{}) (interface{}, error)
+type action func(op *Operator, localVars map[string]interface{}) (interface{}, error)
 
-var opActionListP *map[operatorType]Action
+var opActionListP *map[operatorType]action
 
-var opActionList = map[operatorType]Action{
+var opActionList = map[operatorType]action{
 
 	OP_NONE: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 		user.SetVariable(op.OperandA.Result.(string), op.Result)

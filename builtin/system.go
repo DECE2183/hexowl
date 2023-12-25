@@ -18,14 +18,20 @@ type Environment struct {
 }
 
 type System struct {
-	Stdout      io.Writer
+	// Writer for additional output.
+	Stdout io.Writer
+	// Callback that should clears screen.
 	ClearScreen func()
 
+	// Random seed that sets on SystemInit.
 	RandomSeed int64
 
+	// Callback that should return list of available environment file names.
 	ListEnvironments func() ([]string, error)
+	// Callback that should open environment file with provided name for write and return it as io.WriteCloser.
 	WriteEnvironment func(name string) (io.WriteCloser, error)
-	ReadEnvironment  func(name string) (io.ReadCloser, error)
+	// Callback that should open environment file with provided name for read and return it as io.ReadCloser.
+	ReadEnvironment func(name string) (io.ReadCloser, error)
 }
 
 type descriptor struct {

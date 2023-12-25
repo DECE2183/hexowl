@@ -16,8 +16,11 @@ import (
 )
 
 type Func struct {
+	// Arguments description.
 	Args string
+	// Function description.
 	Desc string
+	// Function that will be executed.
 	Exec func(args ...interface{}) (interface{}, error)
 }
 
@@ -626,21 +629,25 @@ func FuncsInit(out io.Writer) {
 	bDesc.system.Stdout = out
 }
 
+// Is function with name presented in the builtin function map.
 func HasFunction(name string) bool {
 	_, found := functions[name]
 	return found
 }
 
+// Register a new function and add it to the builtin function map.
 func RegisterFunction(name string, function Func) {
 	functions[name] = function
 }
 
+// Get function by name from the builtin function map.
 func GetFunction(name string) (function Func, found bool) {
 	function, found = functions[name]
 	return
 }
 
-func ListFunctions() map[string]Func {
+// Return the builtin function map.
+func ListFunctions() FuncMap {
 	return functions
 }
 

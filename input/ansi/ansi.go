@@ -80,7 +80,7 @@ func ReadCS(reader *bufio.Reader) (rune, []int) {
 }
 
 func WriteCS(writer io.Writer, cmd rune, args ...int64) {
-	fmt.Fprintf(writer, CreateCS(cmd, args...))
+	fmt.Fprint(writer, CreateCS(cmd, args...))
 }
 
 func CreateCS(cmd rune, args ...int64) string {

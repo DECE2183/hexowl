@@ -17,20 +17,24 @@ var constants = map[string]interface{}{
 	"version": "1.3.1-git-latest",
 }
 
+// Is constant with name presented in the builtin constant map.
 func HasConstant(name string) bool {
 	_, found := constants[name]
 	return found
 }
 
+// Register a new constant and add it to the builtin constant map.
 func RegisterConstant[T string | bool | uint64 | int64 | float64](name string, value T) {
 	constants[name] = value
 }
 
+// Get constant by name from the builtin constant map.
 func GetConstant(name string) (val interface{}, found bool) {
 	val, found = constants[name]
 	return
 }
 
+// Return the builtin constant map.
 func ListConstants() map[string]interface{} {
 	return constants
 }

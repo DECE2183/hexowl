@@ -112,7 +112,7 @@ func execUserFunc(f user.Func, args []interface{}) (result interface{}, err erro
 	return
 }
 
-func GetType(op string) operatorType {
+func getType(op string) operatorType {
 	t, ok := opStringRepresent[op]
 	if ok {
 		return t
@@ -121,6 +121,7 @@ func GetType(op string) operatorType {
 	}
 }
 
+// Generate operator tree from provided words.
 func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, error) {
 	var err error
 	newOp := &Operator{}
@@ -281,7 +282,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			continue
 		}
 
-		prio := GetType(w.Literal)
+		prio := getType(w.Literal)
 
 		if prio == OP_MINUS && (i == 0 || words[i-1].Type == utils.W_OP) {
 			// If it is a single minus operator give it the max prioriy
@@ -331,7 +332,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			return nil, fmt.Errorf("operators not found")
 		}
 	} else {
-		newOp.Type = GetType(minPriorityWord.Literal)
+		newOp.Type = getType(minPriorityWord.Literal)
 		if newOp.Type < 0 {
 			return nil, fmt.Errorf("unknown operator '%s'", minPriorityWord.Literal)
 		}
@@ -423,6 +424,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 	return newOp, nil
 }
 
+// Calculate operator tree and return final value.
 func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 	var err error
 

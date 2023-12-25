@@ -38,6 +38,9 @@ func GetPrediction(word string) string {
 	return ""
 }
 
+// Reads input from reader awaiting new line character. Then returns resulting string.
+//
+// This function implements input control and history.
 func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 	rewriteInputLine(writer, "", 1)
 

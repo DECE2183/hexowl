@@ -3,6 +3,7 @@
 [![TryIt Card](https://img.shields.io/badge/try%20it-online-green)](https://dece2183.github.io/web-hexowl)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dece2183/hexowl)](https://goreportcard.com/report/github.com/dece2183/hexowl)
 [![Release](https://img.shields.io/github/v/release/dece2183/hexowl)](https://github.com/dece2183/hexowl/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dece2183/hexow.svg)](https://pkg.go.dev/github.com/dece2183/hexowl)
 
 **hexowl** is a Lightweight and flexible programmer's calculator with user variables and functions support written in Go.
 
@@ -18,13 +19,13 @@ The main purpose of hexowl is to perform operations on numbers regardless of the
  - User defined functions;
  - Ability to save and load the working environment.
 
-# Installation
+## Installation
 
 ```bash
 go install github.com/dece2183/hexowl@latest 
 ```
 
-# Building
+## Building
 
 There are no dependencies, so you can simply type a build command in the cloned repository folder.
 
@@ -32,7 +33,7 @@ There are no dependencies, so you can simply type a build command in the cloned 
 go build
 ```
 
-# Reference
+## Reference
 
 ### Operators
 
@@ -176,3 +177,99 @@ An example of a function that increments all elements of an array:
 >: arrinc(v, a) -> a+v
 >: arrinc(v, a, @) -> (a+v) , arrinc(v,@)
 ```
+
+## Integration guide
+
+Hexowl is specially designed for use as an embeddable calculator.
+
+An example of a minimal setup is shown below:
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/dece2183/hexowl/operators"
+	"github.com/dece2183/hexowl/utils"
+)
+
+const expresion = "2+2"
+
+func main() {
+    localVars := make(map[string]interface{})
+    words := utils.ParsePrompt(expresion)
+
+    operatorTree, err := operators.Generate(words, localVars))
+	if err != nil {
+		return err
+	}
+
+	result, err := operators.Calculate(operatorTree, localVars))
+	if err != nil {
+		return err
+	}
+
+    fmt.Printf("%s = %v", expresion, result);
+}
+```
+
+For more specific designs, it is posible to provide an sdtout writer and callbacks for working with environment save files.
+
+```go
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+
+	"github.com/dece2183/hexowl/builtin"
+)
+
+type dummyCloser bytes.Buffer
+
+var outbuff = &bytes.Buffer{}
+var envFiles map[string]*dummyCloser
+
+func (dc *dummyCloser) Close() error {
+	return nil
+}
+
+func (dc *dummyCloser) Read(dest []byte) (int, error) {
+	b := bytes.Buffer(*dc)
+	return b.Read(dest)
+}
+
+func (dc *dummyCloser) Write(data []byte) (int, error) {
+	b := bytes.Buffer(*dc)
+	return b.Write(data)
+}
+
+func init() {
+	sysDesc := builtin.System{
+		Stdout: outbuff,
+		ListEnvironments: func() ([]string, error) {
+			return maps.Keys(envFiles), nil
+		},
+		WriteEnvironment: func(name string) (io.WriteCloser, error) {
+			if _, ok := envFiles[name]; !ok {
+				envFiles[name] = &dummyCloser{}
+			}
+			return envFiles[name], nil
+		},
+		ReadEnvironment: func(name string) (io.ReadCloser, error) {
+			if _, ok := envFiles[name]; !ok {
+				return nil, fmt.Errorf("not found")
+			}
+			return envFiles[name], nil
+		},
+	}
+
+	// Now all the additional output will be printed in outbuff.
+	// And environment files will be seved to and loaded from envFiles map.
+	builtin.SystemInit(sysDesc)
+}
+```
+
+There are also functions for registering and manage self-written built-in functions and constants. They are described in [`hexowl/builtin`](https://pkg.go.dev/github.com/dece2183/hexowl/builtin) package.

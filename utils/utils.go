@@ -21,16 +21,26 @@ type wordType int
 
 // Word types
 const (
-	W_NONE    wordType = iota
+	// Not word.
+	W_NONE wordType = iota
+	// Number in scientific notation.
 	W_NUM_SCI wordType = iota
+	// Number in decimal representation.
 	W_NUM_DEC wordType = iota
+	// Number in hexadecimal representation.
 	W_NUM_HEX wordType = iota
+	// Number in binary representation.
 	W_NUM_BIN wordType = iota
-	W_UNIT    wordType = iota
-	W_OP      wordType = iota
-	W_CTL     wordType = iota
-	W_FUNC    wordType = iota
-	W_STR     wordType = iota
+	// Some variable, constant or function.
+	W_UNIT wordType = iota
+	// Operator.
+	W_OP wordType = iota
+	// Flow control (brackets).
+	W_CTL wordType = iota
+	// Detected function call.
+	W_FUNC wordType = iota
+	// String.
+	W_STR wordType = iota
 )
 
 type Word struct {
@@ -38,6 +48,7 @@ type Word struct {
 	Literal string
 }
 
+// Is two words equal.
 func WordsEqual(a, b []Word) bool {
 	if len(a) != len(b) {
 		return false
@@ -50,6 +61,7 @@ func WordsEqual(a, b []Word) bool {
 	return true
 }
 
+// This functions splits provided string into words and determines its basic types.
 func ParsePrompt(str string) []Word {
 	words := make([]Word, 0)
 
@@ -148,6 +160,9 @@ type number interface {
 	int64 | uint64 | float64
 }
 
+// Try to convert any variable to number T (int64 | uint64 | float64).
+//
+// It doesn't convert slices, arrays and structs.
 func ToNumber[T number](i interface{}) T {
 	switch v := i.(type) {
 	case bool:
@@ -191,6 +206,9 @@ func ToNumber[T number](i interface{}) T {
 	return T(0)
 }
 
+// Convert any variable to bool.
+//
+// In most cases it returns true if i > 0.
 func ToBool(i interface{}) bool {
 	switch v := i.(type) {
 	case bool:
@@ -214,12 +232,14 @@ func ToBool(i interface{}) bool {
 	return false
 }
 
+// Helper function that converts byte slice to type T.
 func FromByteArray[T any](b []byte) (s T) {
 	buf := bytes.NewReader(b)
 	binary.Read(buf, binary.LittleEndian, &s)
 	return
 }
 
+// Helper function that converts type T to byte slice.
 func ToByteArray[T any](s T) (b []byte) {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, s)

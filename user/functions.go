@@ -17,20 +17,24 @@ type Func struct {
 
 var functions = map[string]Func{}
 
+// Is function presented in the user functions map.
 func HasFunction(name string) bool {
 	_, found := functions[name]
 	return found
 }
 
+// Get user function by name from the user functions map.
 func GetFunction(name string) (function Func, found bool) {
 	function, found = functions[name]
 	return
 }
 
+// Set user function with given name.
 func SetFunction(name string, function Func) {
 	functions[name] = function
 }
 
+// Set function varian for the funtion with given name.
 func SetFunctionVariant(name string, variant FuncVariant) {
 	var currentFunc Func
 
@@ -55,10 +59,12 @@ func SetFunctionVariant(name string, variant FuncVariant) {
 	functions[name] = currentFunc
 }
 
+// Delete user function with name.
 func DeleteFunction(name string) {
 	delete(functions, name)
 }
 
+// Delete user function variant by id.
 func DeleteFunctionVariant(name string, idx int) {
 	f := functions[name]
 	if idx < len(f.Variants)-1 {
@@ -69,16 +75,19 @@ func DeleteFunctionVariant(name string, idx int) {
 	functions[name] = f
 }
 
+// Return the user function map.
 func ListFunctions() map[string]Func {
 	return functions
 }
 
+// Delete all user defined functions.
 func DropFunctions() {
 	for name := range functions {
 		delete(functions, name)
 	}
 }
 
+// Return argument names of function variant as strings slice.
 func (v FuncVariant) ArgNames() (pos []string) {
 	argFound := false
 	for _, w := range v.Args {
@@ -94,6 +103,7 @@ func (v FuncVariant) ArgNames() (pos []string) {
 	return
 }
 
+// fmt.Stringer interface implementation.
 func (v FuncVariant) String() string {
 	str := "("
 	for _, lw := range v.Args {

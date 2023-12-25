@@ -4,23 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
-	"github.com/dece2183/hexowl/builtin"
 	"github.com/dece2183/hexowl/input"
 	"github.com/dece2183/hexowl/operators"
 	"github.com/dece2183/hexowl/utils"
-
-	"net/http"
-	netpprof "net/http/pprof"
 )
 
-var profileEnabled bool
-
 func main() {
-	builtin.FuncsInit(os.Stdout)
-
 	if len(os.Args) > 1 {
 		var expr string
 
@@ -29,16 +20,6 @@ func main() {
 				switch os.Args[i] {
 				case "-ignore", "--ignore":
 					goto ignoreArgs
-				case "-prof", "--prof":
-					mux := http.NewServeMux()
-					mux.HandleFunc("/hxl-pprof/", netpprof.Index)
-					mux.HandleFunc("/hxl-pprof/cmdline", netpprof.Cmdline)
-					mux.HandleFunc("/hxl-pprof/profile", netpprof.Profile)
-					mux.HandleFunc("/hxl-pprof/symbol", netpprof.Symbol)
-					mux.HandleFunc("/hxl-pprof/trace", netpprof.Trace)
-					go http.ListenAndServe(":8080", mux)
-					fmt.Print("\nprofiler enabled at http://localhost:8080/hxl-pprof/profile\n\n")
-					profileEnabled = true
 				}
 			} else {
 				expr += os.Args[i]
@@ -128,13 +109,6 @@ func calculate(words []utils.Word) error {
 		default:
 			fmt.Printf("\n\tResult:\t%v\r\n", val)
 		}
-	}
-
-	if profileEnabled {
-		var mem runtime.MemStats
-		runtime.ReadMemStats(&mem)
-		fmt.Printf("\n\tStack usage: %0.2f kB\r\n", float32(mem.StackSys)/1024)
-		fmt.Printf("\tHeap usage:  %0.2f kB\r\n", float32(mem.HeapInuse)/1024)
 	}
 
 	return nil

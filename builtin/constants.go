@@ -14,7 +14,7 @@ var constants = map[string]interface{}{
 	"true":    true,
 	"false":   false,
 	"help":    "Type in the expression you want to calc and press Enter to get the result.\n\tTo define a variable type its name and assign the value with '=' operator.\n\tType 'funcs()' to see all available functions.\n\tType 'vars()' to see all available variables.",
-	"version": "1.3.1",
+	"version": "1.3.1-git-latest",
 }
 
 func HasConstant(name string) bool {

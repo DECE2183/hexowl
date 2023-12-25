@@ -5,6 +5,8 @@
 *.so
 *.dylib
 
+.vscode/
+
 hexowl
 *.deb
 *.pkg.tar.zst

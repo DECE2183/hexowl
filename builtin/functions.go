@@ -10,27 +10,20 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dece2183/hexowl/user"
 	"github.com/dece2183/hexowl/utils"
 )
-
-type saveStruct struct {
-	Description string
-	UserVars    map[string]interface{}
-	UserFuncs   map[string]user.Func
-}
 
 type Func struct {
 	Args string
 	Desc string
 	Exec func(args ...interface{}) (interface{}, error)
 }
+
 type FuncMap map[string]Func
 
 var loadedEnvDesc = ""
-var outStream io.Writer
 
 var functions = FuncMap{
 	"sin": Func{
@@ -185,8 +178,6 @@ var functions = FuncMap{
 	},
 }
 
-var bFuncs *FuncMap
-
 func sin(args ...interface{}) (interface{}, error) {
 	return math.Sin(utils.ToNumber[float64](args[0])), nil
 }
@@ -280,20 +271,20 @@ func vars(args ...interface{}) (interface{}, error) {
 	userVars := user.ListVariables()
 	varsCount := uint64(len(userVars))
 	if varsCount > 0 {
-		fmt.Fprintf(outStream, "\n\tUser variables:\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tUser variables:\n")
 		keysList := make([]string, 0, len(userVars))
 		for key := range userVars {
 			keysList = append(keysList, key)
 		}
 		sort.Strings(keysList)
 		for _, key := range keysList {
-			fmt.Fprintf(outStream, "\t\t[%s] = %v\n", key, userVars[key])
+			fmt.Fprintf(bDesc.system.Stdout, "\t\t[%s] = %v\n", key, userVars[key])
 		}
 	} else {
-		fmt.Fprintf(outStream, "\n\tThere are no user defined variables.\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no user defined variables.\n")
 	}
 	if len(constants) > 0 {
-		fmt.Fprintf(outStream, "\n\tBuiltin constants:\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tBuiltin constants:\n")
 		keysList := make([]string, 0, len(constants))
 		for key := range constants {
 			keysList = append(keysList, key)
@@ -303,10 +294,10 @@ func vars(args ...interface{}) (interface{}, error) {
 			if key == "help" || key == "version" {
 				continue
 			}
-			fmt.Fprintf(outStream, "\t\t[%s] = %v\n", key, constants[key])
+			fmt.Fprintf(bDesc.system.Stdout, "\t\t[%s] = %v\n", key, constants[key])
 		}
 	} else {
-		fmt.Fprintf(outStream, "\n\tThere are no builtin constants.\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin constants.\n")
 	}
 	return varsCount, nil
 }
@@ -335,7 +326,7 @@ func funcs(args ...interface{}) (interface{}, error) {
 	userFuncs := user.ListFunctions()
 	funcsCount := uint64(len(userFuncs))
 	if funcsCount > 0 {
-		fmt.Fprintf(outStream, "\n\tUser functions:\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tUser functions:\n")
 		keysList := make([]string, 0, len(userFuncs))
 		for key := range userFuncs {
 			keysList = append(keysList, key)
@@ -343,27 +334,27 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := userFuncs[key]
-			fmt.Fprintf(outStream, "\t\t%-12s%s\n", key, value.Variants[0])
+			fmt.Fprintf(bDesc.system.Stdout, "\t\t%-12s%s\n", key, value.Variants[0])
 			for v := 1; v < len(value.Variants); v++ {
-				fmt.Fprintf(outStream, "\t\t%12s%s\n", "", value.Variants[v])
+				fmt.Fprintf(bDesc.system.Stdout, "\t\t%12s%s\n", "", value.Variants[v])
 			}
 		}
 	} else {
-		fmt.Fprintf(outStream, "\n\tThere are no user defined functions.\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no user defined functions.\n")
 	}
-	if len(*bFuncs) > 0 {
-		fmt.Fprintf(outStream, "\n\tBuiltin functions:\n")
-		keysList := make([]string, 0, len(*bFuncs))
-		for key := range *bFuncs {
+	if len(*bDesc.functions) > 0 {
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tBuiltin functions:\n")
+		keysList := make([]string, 0, len(*bDesc.functions))
+		for key := range *bDesc.functions {
 			keysList = append(keysList, key)
 		}
 		sort.Strings(keysList)
 		for _, key := range keysList {
-			value := (*bFuncs)[key]
-			fmt.Fprintf(outStream, "\t\t%-12s%-12s - %s\n", key, value.Args, value.Desc)
+			value := (*bDesc.functions)[key]
+			fmt.Fprintf(bDesc.system.Stdout, "\t\t%-12s%-12s - %s\n", key, value.Args, value.Desc)
 		}
 	} else {
-		fmt.Fprintf(outStream, "\n\tThere are no builtin functions.\n")
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin functions.\n")
 	}
 	return funcsCount, nil
 }
@@ -412,37 +403,32 @@ func clearFuncs(args ...interface{}) (interface{}, error) {
 	return uint64(0), nil
 }
 
-func getEnvPath(envName string) (string, error) {
-	userDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+func readEnvironment(envName string) (Environment, error) {
+	if bDesc.system.ReadEnvironment == nil {
+		return Environment{}, fmt.Errorf("not implemented")
 	}
-	saveDir := fmt.Sprintf("%s/.hexowl/environment", userDir)
-	err = os.MkdirAll(saveDir, 0666)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s/%s.json", saveDir, envName), nil
-}
 
-func getEnvContent(envName string) (saveStruct, error) {
-	path, err := getEnvPath(envName)
+	f, err := bDesc.system.ReadEnvironment(envName)
 	if err != nil {
-		return saveStruct{}, fmt.Errorf("unable to get access to file")
+		return Environment{}, err
 	}
-	data := saveStruct{}
-	buffer, err := os.ReadFile(path)
+	defer f.Close()
+
+	var env Environment
+	dec := json.NewDecoder(f)
+	err = dec.Decode(&env)
 	if err != nil {
-		return saveStruct{}, fmt.Errorf("environment doesn't exists")
+		return Environment{}, fmt.Errorf("unable to deserialize data")
 	}
-	err = json.Unmarshal(buffer, &data)
-	if err != nil {
-		return saveStruct{}, fmt.Errorf("unable to parse environment data")
-	}
-	return data, nil
+
+	return env, nil
 }
 
 func save(args ...interface{}) (interface{}, error) {
+	if bDesc.system.WriteEnvironment == nil {
+		return Environment{}, fmt.Errorf("not implemented")
+	}
+
 	var envName string
 
 	// Get file name
@@ -454,12 +440,7 @@ func save(args ...interface{}) (interface{}, error) {
 	}
 
 	// Save environment
-	savePath, err := getEnvPath(envName)
-	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: unable to get access to file\n", envName)
-		return false, nil
-	}
-	saveData := saveStruct{
+	saveData := Environment{
 		UserVars:  user.ListVariables(),
 		UserFuncs: user.ListFunctions(),
 	}
@@ -469,28 +450,34 @@ func save(args ...interface{}) (interface{}, error) {
 		if success {
 			saveData.Description = desc
 		} else {
-			fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: second argument must be a string\n", envName)
-			return false, nil
+			return false, fmt.Errorf("second argument must be a string")
 		}
 	} else {
 		saveData.Description = loadedEnvDesc
 	}
-	saveJson, err := json.Marshal(saveData)
+
+	// Open file to write
+	f, err := bDesc.system.WriteEnvironment(envName)
 	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: unable to create data\n", envName)
-		return false, nil
+		return false, err
 	}
-	err = os.WriteFile(savePath, saveJson, 0666)
+	defer f.Close()
+
+	enc := json.NewEncoder(f)
+	err = enc.Encode(saveData)
 	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment '%s' save failed: unable to write file\n", envName)
-		return false, nil
+		return false, fmt.Errorf("unable to serialize data")
 	}
 
-	fmt.Fprintf(outStream, "\n\tSaving environment as '%s'\n", envName)
+	fmt.Fprintf(bDesc.system.Stdout, "\n\tEnvironment saved as '%s'\n", envName)
 	return true, nil
 }
 
 func load(args ...interface{}) (interface{}, error) {
+	if bDesc.system.ReadEnvironment == nil {
+		return Environment{}, fmt.Errorf("not implemented")
+	}
+
 	var envName string
 
 	// Get file name
@@ -502,10 +489,9 @@ func load(args ...interface{}) (interface{}, error) {
 	}
 
 	// Load environment
-	loadData, err := getEnvContent(envName)
+	loadData, err := readEnvironment(envName)
 	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment '%s' load failed: %s\n", envName, err)
-		return false, nil
+		return false, err
 	}
 
 	// Apply loaded environment
@@ -519,7 +505,7 @@ func load(args ...interface{}) (interface{}, error) {
 		user.SetFunction(name, val)
 	}
 
-	fmt.Fprintf(outStream, "\n\tEnvironment '%s' loaded\n", envName)
+	fmt.Fprintf(bDesc.system.Stdout, "\n\tEnvironment '%s' loaded\n", envName)
 	return true, nil
 }
 
@@ -535,9 +521,9 @@ func importUnit(args ...interface{}) (interface{}, error) {
 	}
 
 	// Load environment
-	loadData, err := getEnvContent(envName)
+	loadData, err := readEnvironment(envName)
 	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment '%s' import failed: %s\n", envName, err)
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tEnvironment '%s' import failed: %s\n", envName, err)
 		return false, nil
 	}
 
@@ -578,66 +564,53 @@ func importUnit(args ...interface{}) (interface{}, error) {
 		}
 	}
 
-	fmt.Fprintf(outStream, "\n\tImported %d units from environment '%s'\n", loadedUnits, envName)
+	fmt.Fprintf(bDesc.system.Stdout, "\n\tImported %d units from environment '%s'\n", loadedUnits, envName)
 	return true, nil
 }
 
 func listEnv(args ...interface{}) (interface{}, error) {
-	userDir, err := os.UserHomeDir()
+	if bDesc.system.ListEnvironments == nil {
+		return false, fmt.Errorf("not implemented")
+	}
+
+	envs, err := bDesc.system.ListEnvironments()
 	if err != nil {
 		return false, nil
 	}
-	envDir := fmt.Sprintf("%s/.hexowl/environment", userDir)
-	err = os.MkdirAll(envDir, 0666)
-	if err != nil {
-		return false, err
-	}
 
-	f, err := os.Open(envDir)
-	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment list failed: unable to get access to the directory with environments\n")
-		return false, nil
-	}
-	files, err := f.Readdir(0)
-	if err != nil {
-		fmt.Fprintf(outStream, "\n\tEnvironment list failed: unable to read the directory with environments\n")
-		return false, nil
-	}
-
-	if len(files) > 0 {
-		envCount := 0
-		fmt.Fprintf(outStream, "\n\tAvailable environments:\n")
-		for _, v := range files {
-			fname := v.Name()
-			extIndex := len(fname) - 5
-			if extIndex < 0 {
-				continue
-			}
-
-			fname = fname[:extIndex]
-
-			env, err := getEnvContent(fname)
-			if err != nil {
-				continue
-			}
-
-			fmt.Fprintf(outStream, "\t\t%s", fname)
-			if env.Description != "" {
-				fmt.Fprintf(outStream, " - %s", env.Description)
-			}
-			fmt.Fprintf(outStream, "\n")
-
-			envCount++
-		}
-		return uint64(envCount), nil
-	} else {
-		fmt.Fprintf(outStream, "\n\tThere are no saved environments\n")
+	if len(envs) == 0 {
+		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no saved environments\n")
 		return uint64(0), nil
 	}
+
+	envCount := 0
+	fmt.Fprintf(bDesc.system.Stdout, "\n\tAvailable environments:\n")
+	for _, envName := range envs {
+		fmt.Fprintf(bDesc.system.Stdout, "\t\t%s", envName)
+
+		env, err := readEnvironment(envName)
+		if err != nil {
+			fmt.Fprintf(bDesc.system.Stdout, " - %s", err)
+			continue
+		}
+
+		if env.Description != "" {
+			fmt.Fprintf(bDesc.system.Stdout, " - %s", env.Description)
+		}
+		fmt.Fprintf(bDesc.system.Stdout, "\n")
+
+		envCount++
+	}
+
+	return uint64(envCount), nil
 }
 
 func clear(args ...interface{}) (interface{}, error) {
-	fmt.Fprintf(outStream, "\x1bc")
+	if bDesc.system.ClearScreen == nil {
+		return nil, fmt.Errorf("not implemented")
+	}
+
+	bDesc.system.ClearScreen()
 	return nil, nil
 }
 
@@ -647,10 +620,10 @@ func exit(args ...interface{}) (interface{}, error) {
 	return exitCode, nil
 }
 
+// Deprecated: Use builtin.SystemInit instead.
+// builtin.SystemInit provides greater portability.
 func FuncsInit(out io.Writer) {
-	bFuncs = &functions
-	outStream = out
-	rand.Seed(time.Now().UnixNano())
+	bDesc.system.Stdout = out
 }
 
 func HasFunction(name string) bool {

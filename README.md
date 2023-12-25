@@ -198,10 +198,10 @@ import (
 const expresion = "2+2"
 
 func main() {
-    localVars := make(map[string]interface{})
-    words := utils.ParsePrompt(expresion)
+	localVars := make(map[string]interface{})
+	words := utils.ParsePrompt(expresion)
 
-    operatorTree, err := operators.Generate(words, localVars))
+	operatorTree, err := operators.Generate(words, localVars))
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func main() {
 		return err
 	}
 
-    fmt.Printf("%s = %v", expresion, result);
+	fmt.Printf("%s = %v", expresion, result);
 }
 ```
 

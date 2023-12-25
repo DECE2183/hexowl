@@ -274,7 +274,7 @@ var opActionList = map[operatorType]action{
 
 		op.Result, err = execUserFunc(f, args)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find proper '%s' function variation for argsuments: %v; (%s)", fname, args, err)
+			return nil, fmt.Errorf("unable to find proper '%s' function variation for arguments: %v; (%s)", fname, args, err)
 		}
 
 		return op.Result, err

@@ -1,6 +1,7 @@
 # ![Logo](/.assets/hexowl-logo-full.svg)
 
 [![TryIt Card](https://img.shields.io/badge/try%20it-online-green)](https://dece2183.github.io/web-hexowl)
+[![GitHub License](https://img.shields.io/github/license/dece2183/hexowl)](https://github.com/dece2183/hexowl/blob/main/LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dece2183/hexowl)](https://goreportcard.com/report/github.com/dece2183/hexowl)
 [![Release](https://img.shields.io/github/v/release/dece2183/hexowl)](https://github.com/dece2183/hexowl/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/dece2183/hexow.svg)](https://pkg.go.dev/github.com/dece2183/hexowl)

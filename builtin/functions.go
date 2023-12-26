@@ -304,7 +304,7 @@ func vars(args ...interface{}) (interface{}, error) {
 				continue
 			}
 			outstr := fmt.Sprintf("\t\t[%s] = %v\n", key, constants[key])
-			fmt.Fprintf(bDesc.system.Stdout, syntax.Highlight(outstr))
+			fmt.Fprint(bDesc.system.Stdout, syntax.Highlight(outstr))
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin constants.\n")

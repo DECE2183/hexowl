@@ -321,6 +321,9 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 					newOp.OperandB = &Operator{}
 				}
 			} else {
+				//TODO: do something with this potential infinite recursion.
+				// This section should prevent error when calling a single number in brackets, but
+				// if we call function with without brackets (wrong sintax), we will stay here forever.
 				newOp.Type = OP_PLUS
 				newOp.OperandA = &Operator{}
 				newOp.OperandB, err = Generate(words, localVars)

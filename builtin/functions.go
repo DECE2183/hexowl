@@ -522,6 +522,49 @@ func load(args ...interface{}) (interface{}, error) {
 	return true, nil
 }
 
+func resolveDependencies(env Environment, unit string, fn user.Func) int {
+	var loadedUnits = 0
+
+	for _, variant := range fn.Variants {
+		// Search for units and function calls that are not presented in current environment.
+		// And try to find it in env Environment.
+	nextWord:
+		for _, word := range variant.Body {
+			if word.Type != utils.W_UNIT && word.Type != utils.W_FUNC {
+				continue
+			}
+
+			if user.HasVariable(word.Literal) || user.HasFunction(word.Literal) || HasConstant(word.Literal) || HasFunction(word.Literal) {
+				continue
+			}
+
+			if word.Literal == unit {
+				continue
+			}
+
+			// Search in user variables
+			for key, val := range env.UserVars {
+				if key == word.Literal {
+					user.SetVariable(key, val)
+					loadedUnits++
+					continue nextWord
+				}
+			}
+
+			// Search in user functions
+			for key, val := range env.UserFuncs {
+				if key == word.Literal {
+					user.SetFunction(key, val)
+					loadedUnits++
+					continue nextWord
+				}
+			}
+		}
+	}
+
+	return loadedUnits
+}
+
 func importUnit(args ...interface{}) (interface{}, error) {
 	var envName string
 
@@ -534,7 +577,7 @@ func importUnit(args ...interface{}) (interface{}, error) {
 	}
 
 	// Load environment
-	loadData, err := readEnvironment(envName)
+	loadedEnv, err := readEnvironment(envName)
 	if err != nil {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tEnvironment '%s' import failed: %s\n", envName, err)
 		return false, nil
@@ -544,11 +587,11 @@ func importUnit(args ...interface{}) (interface{}, error) {
 
 	if len(args) == 1 {
 		// Import all environment
-		for name, val := range loadData.UserVars {
+		for name, val := range loadedEnv.UserVars {
 			user.SetVariable(name, val)
 			loadedUnits++
 		}
-		for name, val := range loadData.UserFuncs {
+		for name, val := range loadedEnv.UserFuncs {
 			user.SetFunction(name, val)
 			loadedUnits++
 		}
@@ -563,14 +606,15 @@ func importUnit(args ...interface{}) (interface{}, error) {
 				continue
 			}
 
-			userVar, found := loadData.UserVars[name]
+			userVar, found := loadedEnv.UserVars[name]
 			if found {
 				user.SetVariable(name, userVar)
 				loadedUnits++
 			}
 
-			userFunc, found := loadData.UserFuncs[name]
+			userFunc, found := loadedEnv.UserFuncs[name]
 			if found {
+				loadedUnits += resolveDependencies(loadedEnv, name, userFunc)
 				user.SetFunction(name, userFunc)
 				loadedUnits++
 			}
@@ -641,22 +685,22 @@ func FuncsInit(out io.Writer) {
 
 // Is function with name presented in the builtin function map.
 func HasFunction(name string) bool {
-	_, found := functions[name]
+	_, found := (*bDesc.functions)[name]
 	return found
 }
 
 // Register a new function and add it to the builtin function map.
 func RegisterFunction(name string, function Func) {
-	functions[name] = function
+	(*bDesc.functions)[name] = function
 }
 
 // Get function by name from the builtin function map.
 func GetFunction(name string) (function Func, found bool) {
-	function, found = functions[name]
+	function, found = (*bDesc.functions)[name]
 	return
 }
 
 // Return the builtin function map.
 func ListFunctions() FuncMap {
-	return functions
+	return (*bDesc.functions)
 }

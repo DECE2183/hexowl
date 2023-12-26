@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dece2183/hexowl/input"
+	"github.com/dece2183/hexowl/input/syntax"
 	"github.com/dece2183/hexowl/operators"
 	"github.com/dece2183/hexowl/utils"
 )
@@ -48,15 +49,21 @@ func main() {
 	for {
 		words = prompt(stdreader)
 		if len(words) > 0 {
+			var outstr string
+
 			calcBeginTime := time.Now()
 			err := calculate(words)
 			calcTime := time.Since(calcBeginTime)
 
 			if err != nil {
-				fmt.Printf("\n\tError occurred: %s\n\n", err)
+				outstr = fmt.Sprintf("\n\tError occurred: %s\n\n", err)
+				outstr = syntax.Colorize(outstr, syntax.C_ERROR)
 			} else {
-				fmt.Printf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
+				outstr = fmt.Sprintf("\n\tTime:\t%d ms\r\n\n", calcTime.Milliseconds())
+				outstr = syntax.Colorize(outstr, utils.W_NONE)
 			}
+
+			fmt.Print(outstr)
 		}
 	}
 }
@@ -79,21 +86,28 @@ func calculate(words []utils.Word) error {
 	}
 
 	if val != nil {
+		var resultStr string
+
 		switch v := val.(type) {
 		case string:
 			fmt.Printf("\n\t%s\r\n", v)
-		case bool:
-			fmt.Printf("\n\tResult:\t%v\r\n", v)
+			return nil
 		case float32, float64:
-			fmt.Printf("\n\tResult:\t%f\r\n", val)
-			fmt.Printf("\t\t0x%X\r\n", utils.ToNumber[uint64](val))
-			fmt.Printf("\t\t0b%b\r\n", utils.ToNumber[uint64](val))
+			resultStr = fmt.Sprintf(
+				"\t%f\r\n\t\t0x%X\r\n\t\t0b%b\r\n",
+				v,
+				utils.ToNumber[uint64](val),
+				utils.ToNumber[uint64](val),
+			)
 		case int64, uint64:
-			fmt.Printf("\n\tResult:\t%d\r\n", val)
-			fmt.Printf("\t\t0x%X\r\n", utils.ToNumber[uint64](val))
-			fmt.Printf("\t\t0b%b\r\n", utils.ToNumber[uint64](val))
+			resultStr = fmt.Sprintf(
+				"\t%d\r\n\t\t0x%X\r\n\t\t0b%b\r\n",
+				v,
+				utils.ToNumber[uint64](val),
+				utils.ToNumber[uint64](val),
+			)
 		case []interface{}:
-			fmt.Printf("\n\tResult:\t%v\r\n", val)
+			resultStr = fmt.Sprintf("\t%v\r\n", v)
 			if len(v) > 0 {
 				var hstr, bstr string
 				switch v[0].(type) {
@@ -102,13 +116,15 @@ func calculate(words []utils.Word) error {
 						hstr += fmt.Sprintf("0x%X ", utils.ToNumber[uint64](el))
 						bstr += fmt.Sprintf("0b%b ", utils.ToNumber[uint64](el))
 					}
-					fmt.Printf("\t\t[%s]\r\n", hstr[:len(hstr)-1])
-					fmt.Printf("\t\t[%s]\r\n", bstr[:len(bstr)-1])
+					resultStr += fmt.Sprintf("\t\t[%s]\r\n", hstr[:len(hstr)-1])
+					resultStr += fmt.Sprintf("\t\t[%s]\r\n", bstr[:len(bstr)-1])
 				}
 			}
 		default:
-			fmt.Printf("\n\tResult:\t%v\r\n", val)
+			resultStr = fmt.Sprintf("\t%v\r\n", v)
 		}
+
+		fmt.Print("\n\tResult:" + syntax.Highlight(resultStr))
 	}
 
 	return nil

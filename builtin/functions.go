@@ -9,8 +9,8 @@ import (
 	"math/rand"
 	"os"
 	"sort"
-	"strings"
 
+	"github.com/dece2183/hexowl/input/syntax"
 	"github.com/dece2183/hexowl/user"
 	"github.com/dece2183/hexowl/utils"
 )
@@ -150,8 +150,8 @@ var functions = FuncMap{
 		Exec: clearFuncs,
 	},
 	"save": Func{
-		Args: "(id)",
-		Desc: "Save working environment with id",
+		Args: "(id,comment)",
+		Desc: "Save working environment with id and optional comment",
 		Exec: save,
 	},
 	"load": Func{
@@ -281,7 +281,13 @@ func vars(args ...interface{}) (interface{}, error) {
 		}
 		sort.Strings(keysList)
 		for _, key := range keysList {
-			fmt.Fprintf(bDesc.system.Stdout, "\t\t[%s] = %v\n", key, userVars[key])
+			var outstr string
+			if str, isStr := userVars[key].(string); isStr {
+				outstr = fmt.Sprintf("\t\t[%s] = \"%s\"\n", key, str)
+			} else {
+				outstr = fmt.Sprintf("\t\t[%s] = %v\n", key, userVars[key])
+			}
+			fmt.Fprint(bDesc.system.Stdout, syntax.Highlight(outstr))
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no user defined variables.\n")
@@ -297,7 +303,8 @@ func vars(args ...interface{}) (interface{}, error) {
 			if key == "help" || key == "version" {
 				continue
 			}
-			fmt.Fprintf(bDesc.system.Stdout, "\t\t[%s] = %v\n", key, constants[key])
+			outstr := fmt.Sprintf("\t\t[%s] = %v\n", key, constants[key])
+			fmt.Fprintf(bDesc.system.Stdout, syntax.Highlight(outstr))
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin constants.\n")
@@ -337,9 +344,10 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := userFuncs[key]
-			fmt.Fprintf(bDesc.system.Stdout, "\t\t%-12s%s\n", key, value.Variants[0])
+			funcName := fmt.Sprintf("%-12s", key)
+			fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s\n", syntax.Colorize(funcName, utils.W_UNIT), syntax.Highlight(value.Variants[0].String()))
 			for v := 1; v < len(value.Variants); v++ {
-				fmt.Fprintf(bDesc.system.Stdout, "\t\t%12s%s\n", "", value.Variants[v])
+				fmt.Fprintf(bDesc.system.Stdout, "\t\t%12s%s\n", "", syntax.Highlight(value.Variants[v].String()))
 			}
 		}
 	} else {
@@ -354,7 +362,9 @@ func funcs(args ...interface{}) (interface{}, error) {
 		sort.Strings(keysList)
 		for _, key := range keysList {
 			value := (*bDesc.functions)[key]
-			fmt.Fprintf(bDesc.system.Stdout, "\t\t%-12s%-12s - %s\n", key, value.Args, value.Desc)
+			funcName := fmt.Sprintf("%-12s", key)
+			funcArgs := fmt.Sprintf("%-12s", value.Args)
+			fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s - %s\n", syntax.Colorize(funcName, utils.W_FUNC), syntax.Highlight(funcArgs), value.Desc)
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin functions.\n")
@@ -649,13 +659,4 @@ func GetFunction(name string) (function Func, found bool) {
 // Return the builtin function map.
 func ListFunctions() FuncMap {
 	return functions
-}
-
-func PredictFunction(word string) string {
-	for k := range functions {
-		if strings.Contains(k, word) {
-			return k
-		}
-	}
-	return ""
 }

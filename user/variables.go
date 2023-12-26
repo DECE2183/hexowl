@@ -1,7 +1,5 @@
 package user
 
-import "strings"
-
 var variables = map[string]interface{}{}
 
 // Is variable with name presented in the user variables map.
@@ -36,13 +34,4 @@ func DropVariables() {
 	for name := range variables {
 		delete(variables, name)
 	}
-}
-
-func PredictVariable(word string) string {
-	for k := range variables {
-		if strings.Contains(k, word) {
-			return k
-		}
-	}
-	return ""
 }

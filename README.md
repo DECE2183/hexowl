@@ -34,6 +34,12 @@ There are no dependencies, so you can simply type a build command in the cloned 
 go build
 ```
 
+If you want to disable syntax highlighting, you can add the `nohighlight` tag:
+
+```bash
+go build -tags nohighlight
+```
+
 ## Reference
 
 ### Operators

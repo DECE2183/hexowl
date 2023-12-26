@@ -1,8 +1,6 @@
 package user
 
 import (
-	"strings"
-
 	"github.com/dece2183/hexowl/utils"
 )
 
@@ -114,13 +112,4 @@ func (v FuncVariant) String() string {
 		str += rw.Literal
 	}
 	return str
-}
-
-func PredictFunction(word string) string {
-	for k := range functions {
-		if strings.Contains(k, word) {
-			return k
-		}
-	}
-	return ""
 }

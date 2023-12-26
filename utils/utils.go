@@ -17,34 +17,34 @@ const (
 	operatorLiterals = ";#?:=-+*/%^!&|~<>,"
 )
 
-type wordType int
+type WordType int
 
 // Word types
 const (
 	// Not word.
-	W_NONE wordType = iota
+	W_NONE WordType = iota
 	// Number in scientific notation.
-	W_NUM_SCI wordType = iota
+	W_NUM_SCI
 	// Number in decimal representation.
-	W_NUM_DEC wordType = iota
+	W_NUM_DEC
 	// Number in hexadecimal representation.
-	W_NUM_HEX wordType = iota
+	W_NUM_HEX
 	// Number in binary representation.
-	W_NUM_BIN wordType = iota
+	W_NUM_BIN
 	// Some variable, constant or function.
-	W_UNIT wordType = iota
+	W_UNIT
 	// Operator.
-	W_OP wordType = iota
+	W_OP
 	// Flow control (brackets).
-	W_CTL wordType = iota
+	W_CTL
 	// Detected function call.
-	W_FUNC wordType = iota
+	W_FUNC
 	// String.
-	W_STR wordType = iota
+	W_STR
 )
 
 type Word struct {
-	Type    wordType
+	Type    WordType
 	Literal string
 }
 

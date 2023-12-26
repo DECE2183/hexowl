@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"math"
-	"strings"
 )
 
 var constants = map[string]interface{}{
@@ -37,13 +36,4 @@ func GetConstant(name string) (val interface{}, found bool) {
 // Return the builtin constant map.
 func ListConstants() map[string]interface{} {
 	return constants
-}
-
-func PredictConstant(word string) string {
-	for k := range constants {
-		if strings.Contains(k, word) {
-			return k
-		}
-	}
-	return ""
 }

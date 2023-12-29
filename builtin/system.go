@@ -18,6 +18,9 @@ type Environment struct {
 }
 
 type System struct {
+	// Is syntax highlighting enabled for built-in functions output.
+	HighlightEnabled bool
+
 	// Writer for additional output.
 	Stdout io.Writer
 	// Callback that should clears screen.
@@ -40,6 +43,7 @@ type descriptor struct {
 }
 
 var defaultSystem = System{
+	HighlightEnabled: true,
 	Stdout:           os.Stdout,
 	ClearScreen:      sysClearScreen,
 	RandomSeed:       time.Now().UnixNano(),

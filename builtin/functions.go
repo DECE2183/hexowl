@@ -287,7 +287,12 @@ func vars(args ...interface{}) (interface{}, error) {
 			} else {
 				outstr = fmt.Sprintf("\t\t[%s] = %v\n", key, userVars[key])
 			}
-			fmt.Fprint(bDesc.system.Stdout, syntax.Highlight(outstr))
+
+			if bDesc.system.HighlightEnabled {
+				outstr = syntax.Highlight(outstr)
+			}
+
+			fmt.Fprint(bDesc.system.Stdout, outstr)
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no user defined variables.\n")
@@ -304,7 +309,12 @@ func vars(args ...interface{}) (interface{}, error) {
 				continue
 			}
 			outstr := fmt.Sprintf("\t\t[%s] = %v\n", key, constants[key])
-			fmt.Fprint(bDesc.system.Stdout, syntax.Highlight(outstr))
+
+			if bDesc.system.HighlightEnabled {
+				outstr = syntax.Highlight(outstr)
+			}
+
+			fmt.Fprint(bDesc.system.Stdout, outstr)
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin constants.\n")
@@ -345,9 +355,19 @@ func funcs(args ...interface{}) (interface{}, error) {
 		for _, key := range keysList {
 			value := userFuncs[key]
 			funcName := fmt.Sprintf("%-12s", key)
-			fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s\n", syntax.Colorize(funcName, utils.W_UNIT), syntax.Highlight(value.Variants[0].String()))
+
+			if bDesc.system.HighlightEnabled {
+				fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s\n", syntax.Colorize(funcName, utils.W_UNIT), syntax.Highlight(value.Variants[0].String()))
+			} else {
+				fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s\n", funcName, value.Variants[0].String())
+			}
+
 			for v := 1; v < len(value.Variants); v++ {
-				fmt.Fprintf(bDesc.system.Stdout, "\t\t%12s%s\n", "", syntax.Highlight(value.Variants[v].String()))
+				if bDesc.system.HighlightEnabled {
+					fmt.Fprintf(bDesc.system.Stdout, "\t\t%12s%s\n", "", syntax.Highlight(value.Variants[v].String()))
+				} else {
+					fmt.Fprintf(bDesc.system.Stdout, "\t\t%12s%s\n", "", value.Variants[v].String())
+				}
 			}
 		}
 	} else {
@@ -364,7 +384,12 @@ func funcs(args ...interface{}) (interface{}, error) {
 			value := (*bDesc.functions)[key]
 			funcName := fmt.Sprintf("%-12s", key)
 			funcArgs := fmt.Sprintf("%-12s", value.Args)
-			fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s - %s\n", syntax.Colorize(funcName, utils.W_FUNC), syntax.Highlight(funcArgs), value.Desc)
+
+			if bDesc.system.HighlightEnabled {
+				fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s - %s\n", syntax.Colorize(funcName, utils.W_FUNC), syntax.Highlight(funcArgs), value.Desc)
+			} else {
+				fmt.Fprintf(bDesc.system.Stdout, "\t\t%s%s - %s\n", funcName, funcArgs, value.Desc)
+			}
 		}
 	} else {
 		fmt.Fprintf(bDesc.system.Stdout, "\n\tThere are no builtin functions.\n")

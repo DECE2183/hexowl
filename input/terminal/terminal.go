@@ -1,4 +1,4 @@
-package input
+package terminal
 
 /*
 #include <stdio.h>
@@ -13,6 +13,7 @@ static DWORD  hStdoutOldMode;
 #else
 #include <unistd.h>
 #include <termios.h>
+static struct termios term;
 #endif
 
 static bool is_raw_enabled = false;
@@ -25,10 +26,9 @@ void enableRawMode(void)
 	SetConsoleMode(hStdin, ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_PROCESSED_INPUT);
 	SetConsoleMode(hStdout, ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT);
 #else
-	struct termios t;
-	tcgetattr(STDIN_FILENO, &t);
-	t.c_lflag &= ~(ECHO | ICANON);
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
+	tcgetattr(STDIN_FILENO, &term);
+	term.c_lflag &= ~(ECHO | ICANON);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &term);
 #endif
 
 	is_raw_enabled = true;
@@ -42,8 +42,8 @@ void disableRawMode(void)
 	SetConsoleMode(hStdin, hStdinOldMode);
 	SetConsoleMode(hStdout, hStdoutOldMode);
 #else
-	struct termios t;
-  	tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
+	term.c_lflag |= ECHO | ICANON;
+  	tcsetattr(STDIN_FILENO, TCSAFLUSH, &term);
 #endif
 
 	is_raw_enabled = false;

@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
-	"os"
 	"sort"
 
 	"github.com/dece2183/hexowl/input/syntax"
@@ -443,7 +442,7 @@ func clearFuncs(args ...interface{}) (interface{}, error) {
 
 func readEnvironment(envName string) (Environment, error) {
 	if bDesc.system.ReadEnvironment == nil {
-		return Environment{}, fmt.Errorf("not implemented")
+		return Environment{}, fmt.Errorf("'load' not implemented")
 	}
 
 	f, err := bDesc.system.ReadEnvironment(envName)
@@ -464,7 +463,7 @@ func readEnvironment(envName string) (Environment, error) {
 
 func save(args ...interface{}) (interface{}, error) {
 	if bDesc.system.WriteEnvironment == nil {
-		return Environment{}, fmt.Errorf("not implemented")
+		return Environment{}, fmt.Errorf("'save' not implemented")
 	}
 
 	var envName string
@@ -513,7 +512,7 @@ func save(args ...interface{}) (interface{}, error) {
 
 func load(args ...interface{}) (interface{}, error) {
 	if bDesc.system.ReadEnvironment == nil {
-		return Environment{}, fmt.Errorf("not implemented")
+		return Environment{}, fmt.Errorf("'load' not implemented")
 	}
 
 	var envName string
@@ -652,7 +651,7 @@ func importUnit(args ...interface{}) (interface{}, error) {
 
 func listEnv(args ...interface{}) (interface{}, error) {
 	if bDesc.system.ListEnvironments == nil {
-		return false, fmt.Errorf("not implemented")
+		return false, fmt.Errorf("'envs' not implemented")
 	}
 
 	envs, err := bDesc.system.ListEnvironments()
@@ -689,7 +688,7 @@ func listEnv(args ...interface{}) (interface{}, error) {
 
 func clear(args ...interface{}) (interface{}, error) {
 	if bDesc.system.ClearScreen == nil {
-		return nil, fmt.Errorf("not implemented")
+		return nil, fmt.Errorf("'clear' not implemented")
 	}
 
 	bDesc.system.ClearScreen()
@@ -697,8 +696,12 @@ func clear(args ...interface{}) (interface{}, error) {
 }
 
 func exit(args ...interface{}) (interface{}, error) {
+	if bDesc.system.Exit == nil {
+		return nil, fmt.Errorf("'exit' not implemented")
+	}
+
 	exitCode := utils.ToNumber[int64](args[0])
-	os.Exit(int(exitCode))
+	bDesc.system.Exit(int(exitCode))
 	return exitCode, nil
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dece2183/hexowl/input"
 	"github.com/dece2183/hexowl/input/syntax"
+	"github.com/dece2183/hexowl/input/terminal"
 	"github.com/dece2183/hexowl/operators"
 	"github.com/dece2183/hexowl/utils"
 )
@@ -43,7 +44,7 @@ func main() {
 	}
 
 	var words []utils.Word
-	input.EnableRawMode()
+	terminal.EnableRawMode()
 	stdreader := bufio.NewReader(os.Stdin)
 
 	for {

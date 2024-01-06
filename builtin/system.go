@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/dece2183/hexowl/input/terminal"
 	"github.com/dece2183/hexowl/user"
 )
 
@@ -35,6 +36,9 @@ type System struct {
 	WriteEnvironment func(name string) (io.WriteCloser, error)
 	// Callback that should open environment file with provided name for read and return it as io.ReadCloser.
 	ReadEnvironment func(name string) (io.ReadCloser, error)
+
+	// Callback that should terminate the program and perform any necessary cleanup.
+	Exit func(errCode int)
 }
 
 type descriptor struct {
@@ -50,6 +54,7 @@ var defaultSystem = System{
 	ListEnvironments: sysListEnv,
 	WriteEnvironment: sysWriteEnv,
 	ReadEnvironment:  sysReadEnv,
+	Exit:             sysExit,
 }
 
 var bDesc descriptor
@@ -144,6 +149,11 @@ func sysReadEnv(name string) (io.ReadCloser, error) {
 	}
 
 	return f, nil
+}
+
+func sysExit(errCode int) {
+	terminal.DisableRawMode()
+	os.Exit(errCode)
 }
 
 // Provide your own system description.

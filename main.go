@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	_ "github.com/dece2183/hexowl/builtin/default_system"
 	"github.com/dece2183/hexowl/input"
 	"github.com/dece2183/hexowl/input/syntax"
 	"github.com/dece2183/hexowl/input/terminal"

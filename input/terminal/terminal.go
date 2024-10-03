@@ -1,3 +1,6 @@
+//go:build !nodefsystem
+// +build !nodefsystem
+
 package terminal
 
 /*

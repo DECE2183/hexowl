@@ -15,7 +15,10 @@ type environment struct {
 	UserFuncs   map[string]user.Func
 }
 
-var loadedEnvDesc = ""
+const (
+	_ENV_NAME_VAR        = "name"
+	_ENV_DESCRIPTION_VAR = "description"
+)
 
 func readEnvironment(desc *types.Descriptor, envName string) (environment, error) {
 	if desc.System.ReadEnvironment == nil {
@@ -94,26 +97,45 @@ func Save(desc *types.Descriptor, args ...interface{}) (interface{}, error) {
 	// Get file name
 	switch a := args[0].(type) {
 	case string:
+		user.SetVariable(_ENV_NAME_VAR, a)
 		envName = a
 	default:
-		envName = fmt.Sprintf("0x%016X", utils.ToNumber[uint64](args[0]))
+		envNum := utils.ToNumber[uint64](args[0])
+		if envNum == 0 && user.HasVariable(_ENV_NAME_VAR) {
+			userName, _ := user.GetVariable(_ENV_NAME_VAR)
+			switch name := userName.(type) {
+			case string:
+				envName = name
+			default:
+				envName = fmt.Sprintf("0x%016X", utils.ToNumber[uint64](name))
+			}
+		} else {
+			user.SetVariable(_ENV_NAME_VAR, envNum)
+			envName = fmt.Sprintf("0x%016X", envNum)
+		}
+	}
+
+	var envDescription string
+
+	// Get env description
+	if len(args) > 1 {
+		desc, success := args[1].(string)
+		if success {
+			user.SetVariable(_ENV_DESCRIPTION_VAR, desc)
+			envDescription = desc
+		} else {
+			return false, fmt.Errorf("second argument must be a string")
+		}
+	} else if user.HasVariable(_ENV_DESCRIPTION_VAR) {
+		desc, _ := user.GetVariable(_ENV_DESCRIPTION_VAR)
+		envDescription, _ = desc.(string)
 	}
 
 	// Save environment
 	saveData := environment{
-		UserVars:  user.ListVariables(),
-		UserFuncs: user.ListFunctions(),
-	}
-	// Add description if it is provided
-	if len(args) > 1 {
-		desc, success := args[1].(string)
-		if success {
-			saveData.Description = desc
-		} else {
-			return false, fmt.Errorf("second argument must be a string")
-		}
-	} else {
-		saveData.Description = loadedEnvDesc
+		UserVars:    user.ListVariables(),
+		UserFuncs:   user.ListFunctions(),
+		Description: envDescription,
 	}
 
 	// Open file to write
@@ -155,7 +177,6 @@ func Load(desc *types.Descriptor, args ...interface{}) (interface{}, error) {
 	}
 
 	// Apply loaded environment
-	loadedEnvDesc = loadData.Description
 	user.DropVariables()
 	for name, val := range loadData.UserVars {
 		user.SetVariable(name, val)

@@ -284,8 +284,8 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 
 		prio := getType(w.Literal)
 
-		if prio == OP_MINUS && (i == 0 || words[i-1].Type == utils.W_OP) {
-			// If it is a single minus operator give it the max prioriy
+		if prio.IsUnary() && (i == 0 || words[i-1].Type == utils.W_OP) {
+			// If it is an unary operator give it the max prioriy
 			prio = OP_COUNT
 		}
 
@@ -373,10 +373,10 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 				Result: words[minPriorityIndex+1:],
 			}
 			return newOp, nil
-		} else if newOp.Type == OP_BITINVERSE || newOp.Type == OP_POPCNT || newOp.Type == OP_LOGICNOT {
-			// One side operators
+		} else if newOp.Type.IsUnary() {
+			// Unary operators
 			newOp.OperandA = &Operator{}
-		} else if newOp.Type >= OP_ASSIGN && newOp.Type <= OP_ASSIGNDIV {
+		} else if newOp.Type.IsAssign() {
 			// Assign operators
 			if minPriorityIndex < 1 {
 				return nil, fmt.Errorf("missing a variable on left side of operator '%s'", minPriorityWord.Literal)
@@ -384,28 +384,20 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			lit := words[minPriorityIndex-1].Literal
 
 			_, foundLocal := getLocalVariable(localVars, lit)
-			if foundLocal {
+			if foundLocal || newOp.Type == OP_LOCALASSIGN {
+				localVars[lit] = nil
 				newOp.OperandA = &Operator{
 					Type:   OP_LOCALVAR,
 					Result: lit,
 				}
-			} else if user.HasVariable(lit) {
+			} else if user.HasVariable(lit) || newOp.Type == OP_ASSIGN {
+				user.SetVariable(lit, nil)
 				newOp.OperandA = &Operator{
 					Type:   OP_USERVAR,
 					Result: lit,
 				}
 			} else {
-				newOp.OperandA = &Operator{
-					Result: lit,
-				}
-			}
-
-			if newOp.OperandA.Type == OP_NONE {
-				if newOp.Type > OP_LOCALASSIGN {
-					return nil, fmt.Errorf("there is no user variable named '%s'", lit)
-				} else {
-					localVars[lit] = nil
-				}
+				return nil, fmt.Errorf("there is no user variable named '%s'", lit)
 			}
 		} else {
 			newOp.OperandA, err = Generate(words[:minPriorityIndex], localVars)
@@ -464,7 +456,7 @@ func Calculate(op *Operator, localVars map[string]interface{}) (interface{}, err
 		}
 		return op.Result, nil
 	} else {
-		if op.OperandA != nil {
+		if op.OperandA != nil && !op.Type.IsAssign() {
 			op.OperandA.Result, err = Calculate(op.OperandA, localVars)
 			if err != nil {
 				return nil, err

@@ -22,12 +22,12 @@ var opActionList = map[operatorType]action{
 	},
 
 	OP_LOCALVAR: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		localVars[op.OperandA.OperandA.Result.(string)] = op.Result
+		localVars[op.OperandA.Result.(string)] = op.Result
 		return op.Result, nil
 	},
 
 	OP_USERVAR: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		user.SetVariable(op.OperandA.OperandA.Result.(string), op.Result)
+		user.SetVariable(op.OperandA.Result.(string), op.Result)
 		return op.Result, nil
 	},
 

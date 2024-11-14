@@ -99,3 +99,11 @@ var opStringRepresent = map[string]operatorType{
 	"!": OP_LOGICNOT,
 	"#": OP_POPCNT,
 }
+
+func (op operatorType) IsUnary() bool {
+	return op == OP_BITINVERSE || op == OP_POPCNT || op == OP_LOGICNOT
+}
+
+func (op operatorType) IsAssign() bool {
+	return op >= OP_ASSIGN && op <= OP_ASSIGNBITOR
+}

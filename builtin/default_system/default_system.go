@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/builtin/types"
 	"github.com/dece2183/hexowl/input/terminal"
 )
 
-var DefaultSystem builtin.System
+var DefaultSystem types.System
 
 func init() {
-	DefaultSystem = builtin.System{
+	DefaultSystem = types.System{
 		HighlightEnabled: true,
 		Stdout:           os.Stdout,
 		ClearScreen:      sysClearScreen,

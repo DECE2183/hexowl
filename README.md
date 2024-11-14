@@ -232,6 +232,7 @@ import (
 	"io"
 
 	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/builtin/types"
 )
 
 type dummyCloser bytes.Buffer
@@ -254,7 +255,7 @@ func (dc *dummyCloser) Write(data []byte) (int, error) {
 }
 
 func init() {
-	sysDesc := builtin.System{
+	sysDesc := types.System{
 		Stdout: outbuff,
 		ListEnvironments: func() ([]string, error) {
 			return maps.Keys(envFiles), nil

@@ -1,17 +1,6 @@
-package builtin
+package types
 
-import (
-	"io"
-	"math/rand"
-
-	"github.com/dece2183/hexowl/user"
-)
-
-type Environment struct {
-	Description string
-	UserVars    map[string]interface{}
-	UserFuncs   map[string]user.Func
-}
+import "io"
 
 type System struct {
 	// Is syntax highlighting enabled for built-in functions output.
@@ -36,24 +25,21 @@ type System struct {
 	Exit func(errCode int)
 }
 
-type descriptor struct {
-	functions *FuncMap
-	system    System
+type Func struct {
+	// Arguments description.
+	Args string
+	// Function description.
+	Desc string
+	// Function that will be executed.
+	Exec func(desc *Descriptor, args ...interface{}) (interface{}, error)
 }
 
-var bDesc descriptor
+type FunctionMap map[string]Func
 
-func init() {
-	bDesc.functions = &functions
-	bDesc.system.Stdout = io.Discard
-}
+type ConstantMap map[string]interface{}
 
-// Provide your own system description.
-//
-// Use this function to implement native integration into your application.
-func SystemInit(sys System) {
-	bDesc.system = sys
-	if sys.RandomSeed != 0 {
-		rand.Seed(sys.RandomSeed)
-	}
+type Descriptor struct {
+	Constants ConstantMap
+	Functions FunctionMap
+	System    System
 }

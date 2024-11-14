@@ -2,9 +2,11 @@ package builtin
 
 import (
 	"math"
+
+	"github.com/dece2183/hexowl/builtin/types"
 )
 
-var constants = map[string]interface{}{
+var constants = types.ConstantMap{
 	"nil":     nil,
 	"inf":     math.Inf(0),
 	"nan":     math.NaN(),
@@ -13,7 +15,7 @@ var constants = map[string]interface{}{
 	"true":    true,
 	"false":   false,
 	"help":    "Type in the expression you want to calc and press Enter to get the result.\n\tTo define a variable type its name and assign the value with '=' operator.\n\tType 'funcs()' to see all available functions.\n\tType 'vars()' to see all available variables.",
-	"version": "1.4.1",
+	"version": "1.4.2",
 }
 
 // Is constant with name presented in the builtin constant map.
@@ -34,6 +36,6 @@ func GetConstant(name string) (val interface{}, found bool) {
 }
 
 // Return the builtin constant map.
-func ListConstants() map[string]interface{} {
+func ListConstants() types.ConstantMap {
 	return constants
 }

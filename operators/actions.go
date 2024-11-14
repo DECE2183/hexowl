@@ -251,9 +251,9 @@ var opActionList = map[operatorType]action{
 
 		switch op.OperandB.Result.(type) {
 		case []interface{}:
-			op.Result, err = f.Exec(op.OperandB.Result.([]interface{})...)
+			op.Result, err = builtin.Exec(f, op.OperandB.Result.([]interface{})...)
 		default:
-			op.Result, err = f.Exec(op.OperandB.Result)
+			op.Result, err = builtin.Exec(f, op.OperandB.Result)
 		}
 
 		return op.Result, err

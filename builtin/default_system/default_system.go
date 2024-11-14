@@ -41,7 +41,7 @@ func sysGetEnvPath(envName string) (string, error) {
 	}
 
 	saveDir := path.Join(userDir, ".hexowl/environment")
-	err = os.MkdirAll(saveDir, 0666)
+	err = os.MkdirAll(saveDir, 0755)
 	if err != nil {
 		return "", fmt.Errorf("unable to make directory")
 	}
@@ -55,7 +55,7 @@ func sysListEnv() ([]string, error) {
 		return nil, fmt.Errorf("unable to get home directory")
 	}
 	envDir := path.Join(userDir, ".hexowl/environment")
-	err = os.MkdirAll(envDir, 0666)
+	err = os.MkdirAll(envDir, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("unable to make directory")
 	}

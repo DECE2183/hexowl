@@ -15,7 +15,7 @@ func Predict(word string) string {
 			continue
 		}
 		if k[:len(word)] == word {
-			return k
+			return k + "()"
 		}
 	}
 

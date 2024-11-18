@@ -80,7 +80,7 @@ func ReadCS(reader *bufio.Reader) (rune, []int) {
 }
 
 func WriteCS(writer io.Writer, cmd rune, args ...int64) {
-	fmt.Fprint(writer, CreateCS(cmd, args...))
+	writer.Write([]byte(CreateCS(cmd, args...)))
 }
 
 func CreateCS(cmd rune, args ...int64) string {
@@ -93,5 +93,5 @@ func CreateCS(cmd rune, args ...int64) string {
 		argstr = argstr[:len(argstr)-1]
 	}
 
-	return fmt.Sprintf("\033[%s%c", argstr, cmd)
+	return "\033[" + argstr + string(cmd)
 }

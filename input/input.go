@@ -2,7 +2,6 @@ package input
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"strings"
 	"unicode"
@@ -61,10 +60,12 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 				historyIdx = 0
 			}
 
-			if cursorPos < len(history[0]) {
-				history[0] = fmt.Sprintf("%s%c%s", history[0][:cursorPos], readRune, history[0][cursorPos:])
-			} else {
-				history[0] = fmt.Sprintf("%s%c", history[0], readRune)
+			if readRune == '(' && cursorPos == len(history[0]) {
+				history[0] = history[0] + "()"
+			} else if cursorPos == len(history[0]) {
+				history[0] = history[0] + string(readRune)
+			} else if readRune != ')' || history[0][cursorPos] != ')' {
+				history[0] = history[0][:cursorPos] + string(readRune) + history[0][cursorPos:]
 			}
 
 			cursorPos++
@@ -75,14 +76,17 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 			case '\t':
 				// tab
 				if len(prediction) > 0 {
-					history[0] = fmt.Sprintf("%s%s%s", history[0][:cursorPos], prediction, history[0][cursorPos:])
+					history[0] = history[0][:cursorPos] + prediction + history[0][cursorPos:]
+					cursorPos += len(prediction)
+					if prediction[len(prediction)-1] == ')' {
+						cursorPos--
+					}
 				}
-				cursorPos += len(prediction)
 				prediction = ""
 				rewriteInputLine(writer, history[0], "", cursorPos)
 			case '\n', '\r':
 				// new line
-				fmt.Fprint(writer, "\n")
+				writer.Write([]byte("\n"))
 				if historyIdx != 0 {
 					beg := history[1:historyIdx]
 					end := history[historyIdx+1:]
@@ -237,7 +241,7 @@ func rewriteInputLine(writer io.Writer, str, prediction string, cpos int) {
 		highlighted = syntax.Highlight(str)
 	}
 
-	fmt.Fprintf(writer, "\n%s%s>: %s", ansi.CreateCS(ansi.CUU, 1), ansi.CreateCS(ansi.EL), highlighted)
+	writer.Write([]byte("\n" + ansi.CreateCS(ansi.CUU, 1) + ansi.CreateCS(ansi.EL) + ">: " + highlighted))
 
 	coffset := (len(str) + len(prediction)) - cpos
 	if coffset > 0 {

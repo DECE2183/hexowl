@@ -56,18 +56,18 @@ var opActionList = map[operatorType]action{
 		return opActionAssign(op, localVars)
 	},
 
-	OP_LOCALASSIGN: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
+	OP_ASSIGNLOCAL: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 		op.Result = op.OperandB.Result
 		localVars[op.OperandA.Result.(string)] = op.Result
 		return op.Result, nil
 	},
 
-	OP_DECREMENT: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
+	OP_ASSIGNMINUS: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 		op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},
 
-	OP_INCREMENT: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
+	OP_ASSIGNPLUS: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
 		op.Result = utils.ToNumber[float64](op.OperandA.Result) + utils.ToNumber[float64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},

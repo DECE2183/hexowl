@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dece2183/hexowl/builtin"
+	"github.com/dece2183/hexowl/operators/stack"
 	"github.com/dece2183/hexowl/user"
 	"github.com/dece2183/hexowl/utils"
 )
@@ -18,6 +19,205 @@ type Operator struct {
 	OperandA *Operator
 	OperandB *Operator
 	Result   interface{}
+}
+
+type Op struct {
+	Type   operatorType
+	Prev   *Op
+	Next   *Op
+	Result interface{}
+}
+
+type valueType int
+
+type value struct {
+	t valueType
+	v interface{}
+}
+
+type Sequence struct {
+	sequence  []interface{}
+	localVars map[string]bool
+}
+
+func Prepare(words []utils.Word) (*Sequence, error) {
+	var err error
+
+	var op operatorType
+	opStack := make([]operatorType, 0, len(words)/3)
+	seq := &Sequence{
+		localVars: make(map[string]bool),
+	}
+
+	for _, w := range words {
+		switch w.Type {
+		case utils.W_NONE:
+			seq.sequence = append(seq.sequence, value{
+				t: _VAL_CONST,
+				v: nil,
+			})
+		case utils.W_OP:
+			op = getType(w.Literal)
+			for len(opStack) > 0 {
+				_, sop := stack.Pop(opStack)
+				if sop <= op {
+					break
+				}
+				opStack, _ = stack.Pop(opStack)
+				seq.sequence = append(seq.sequence, sop)
+			}
+			opStack = stack.Push(opStack, op)
+			if op == OP_ASSIGNLOCAL {
+				val := seq.sequence[len(seq.sequence)-1].(value)
+				seq.localVars[val.v.(string)] = true
+			}
+		case utils.W_CTL:
+			if w.Literal == "(" {
+				opStack = stack.Push(opStack, OP_FLOW)
+				if len(seq.sequence) > 0 {
+					if val, ok := seq.sequence[len(seq.sequence)-1].(value); ok && val.t > _VAL_CONSTANT {
+						opStack = stack.Push(opStack, OP_CALLFUNC)
+					}
+				}
+			} else {
+				for len(opStack) > 0 {
+					opStack, op = stack.Pop(opStack)
+					if op == OP_FLOW {
+						break
+					}
+					seq.sequence = append(seq.sequence, op)
+				}
+			}
+		case utils.W_NUM_SCI:
+			var mantisse, order float64
+			num := strings.Split(w.Literal, "e")
+			mantisse, err = strconv.ParseFloat(strings.ReplaceAll(num[0], "_", ""), 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse mantisse part of literal '%s'", w.Literal)
+			}
+			order, err = strconv.ParseFloat(strings.ReplaceAll(num[1], "_", ""), 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse order part of literal '%s'", w.Literal)
+			}
+			seq.sequence = append(seq.sequence, value{
+				t: _VAL_CONST,
+				v: mantisse * math.Pow(10, order),
+			})
+		case utils.W_NUM_DEC:
+			var val float64
+			val, err = strconv.ParseFloat(strings.ReplaceAll(w.Literal, "_", ""), 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse literal '%s' as number", w.Literal)
+			}
+			seq.sequence = append(seq.sequence, value{
+				t: _VAL_CONST,
+				v: val,
+			})
+		case utils.W_NUM_HEX:
+			var val uint64
+			val, err = strconv.ParseUint(strings.ReplaceAll(w.Literal, "_", ""), 16, 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse literal '%s' as hex number", w.Literal)
+			}
+			seq.sequence = append(seq.sequence, value{
+				t: _VAL_CONST,
+				v: val,
+			})
+		case utils.W_NUM_BIN:
+			var val uint64
+			val, err = strconv.ParseUint(strings.ReplaceAll(w.Literal, "_", ""), 2, 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse literal '%s' as bin number", w.Literal)
+			}
+			seq.sequence = append(seq.sequence, value{
+				t: _VAL_CONST,
+				v: val,
+			})
+		case utils.W_STR:
+			seq.sequence = append(seq.sequence, value{
+				t: _VAL_CONST,
+				v: w.Literal,
+			})
+		case utils.W_UNIT:
+			// Try to find variable
+			var valType valueType
+			if seq.localVars[w.Literal] {
+				valType = _VAL_LOCALVAR
+			} else if user.HasVariable(w.Literal) {
+				valType = _VAL_USERVAR
+			} else if builtin.HasConstant(w.Literal) {
+				valType = _VAL_CONSTANT
+			} else if user.HasFunction(w.Literal) {
+				valType = _VAL_USERFUNC
+			} else if builtin.HasFunction(w.Literal) {
+				valType = _VAL_BUILTINFUNC
+			} else {
+				valType = _VAL_CONST
+			}
+			seq.sequence = append(seq.sequence, value{
+				t: valType,
+				v: w.Literal,
+			})
+		case utils.W_FUNC:
+			// Try to find function
+			var valType valueType
+			if seq.localVars[w.Literal] {
+				valType = _VAL_LOCALFUNCPTR
+			} else if user.HasVariable(w.Literal) {
+				valType = _VAL_FUNCPTR
+			} else if user.HasFunction(w.Literal) {
+				valType = _VAL_USERFUNC
+			} else if builtin.HasFunction(w.Literal) {
+				valType = _VAL_BUILTINFUNC
+			} else {
+				return nil, fmt.Errorf("there is no function named '%s'", w.Literal)
+			}
+			seq.sequence = append(seq.sequence, value{
+				t: valType,
+				v: w.Literal,
+			})
+		default:
+			return nil, fmt.Errorf("unknown word #%d", w.Type)
+		}
+	}
+
+	for len(opStack) > 0 {
+		opStack, op = stack.Pop(opStack)
+		seq.sequence = append(seq.sequence, op)
+	}
+
+	return seq, nil
+}
+
+func Execute(seq *Sequence) (interface{}, error) {
+	valStack := make([]value, 0, 6)
+
+	var (
+		opLeft, opRight value
+		localVars       = map[string]interface{}{}
+	)
+
+	for i := range seq.sequence {
+		switch node := seq.sequence[i].(type) {
+		case value:
+			valStack = stack.Push(valStack, node)
+		case operatorType:
+			valStack, opRight = stack.Pop(valStack)
+			valStack, opLeft = stack.Pop(valStack)
+			handler, ok := actionHandlerMap[node]
+			if !ok {
+				return nil, fmt.Errorf("unknown operator #%d", node)
+			}
+			val, err := handler(opLeft, opRight, localVars)
+			if err != nil {
+				return nil, err
+			}
+			valStack = stack.Push(valStack, value{t: _VAL_CONST, v: val})
+		}
+	}
+
+	_, opLeft = stack.Pop(valStack)
+	return actionObtainVariable(opLeft, localVars)
 }
 
 func getLocalVariable(localVars map[string]interface{}, literal string) (val interface{}, found bool) {
@@ -384,7 +584,7 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			lit := words[minPriorityIndex-1].Literal
 
 			_, foundLocal := getLocalVariable(localVars, lit)
-			if foundLocal || newOp.Type == OP_LOCALASSIGN {
+			if foundLocal || newOp.Type == OP_ASSIGNLOCAL {
 				localVars[lit] = nil
 				newOp.OperandA = &Operator{
 					Type:   OP_LOCALVAR,

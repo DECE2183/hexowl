@@ -6,30 +6,42 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dece2183/hexowl/builtin"
 	"github.com/dece2183/hexowl/input/ansi"
 	"github.com/dece2183/hexowl/input/syntax"
-	"github.com/dece2183/hexowl/user"
 	"github.com/dece2183/hexowl/utils"
 )
 
-var (
-	history    []string = make([]string, 1)
-	historyIdx int      = 0
-)
+type Predictable interface {
+	Predict(word string) string
+}
+
+type Console struct {
+	writer       io.Writer
+	reader       *bufio.Reader
+	history      []string
+	historyIdx   int
+	predictables []Predictable
+}
+
+func NewConsole(writer io.Writer, reader io.Reader, predictionList []Predictable) *Console {
+	return &Console{
+		writer:       writer,
+		reader:       bufio.NewReader(reader),
+		history:      make([]string, 1),
+		historyIdx:   0,
+		predictables: predictionList,
+	}
+}
 
 // Searches the list of built-in and user defined variables and function for a matching completion for the word and.
 //
 // Returns the completed string.
-func Predict(word string) string {
-	var prediction string
-
-	if prediction = user.Predict(word); len(prediction) > 0 {
-		return prediction
-	}
-
-	if prediction = builtin.Predict(word); len(prediction) > 0 {
-		return prediction
+func (inp *Console) Predict(word string) string {
+	for _, p := range inp.predictables {
+		prediction := p.Predict(word)
+		if len(prediction) > 0 {
+			return prediction
+		}
 	}
 
 	return ""
@@ -38,8 +50,8 @@ func Predict(word string) string {
 // Reads input from reader awaiting new line character. Then returns resulting string.
 //
 // This function implements input control and history.
-func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
-	rewriteInputLine(writer, "", "", 1)
+func (inp *Console) Prompt() (string, error) {
+	inp.rewriteInputLine("", "", 1)
 
 	var (
 		cursorPos  int
@@ -49,71 +61,71 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 	)
 
 	for {
-		readRune, _, readErr = reader.ReadRune()
+		readRune, _, readErr = inp.reader.ReadRune()
 		if readErr != nil && readErr != io.EOF {
 			return "", readErr
 		}
 
 		if unicode.IsPrint(readRune) {
-			if historyIdx > 0 {
-				history[0] = history[historyIdx]
-				historyIdx = 0
+			if inp.historyIdx > 0 {
+				inp.history[0] = inp.history[inp.historyIdx]
+				inp.historyIdx = 0
 			}
 
-			if readRune == '(' && cursorPos == len(history[0]) {
-				history[0] = history[0] + "()"
-			} else if cursorPos == len(history[0]) {
-				history[0] = history[0] + string(readRune)
-			} else if readRune != ')' || history[0][cursorPos] != ')' {
-				history[0] = history[0][:cursorPos] + string(readRune) + history[0][cursorPos:]
+			if readRune == '(' && cursorPos == len(inp.history[0]) {
+				inp.history[0] = inp.history[0] + "()"
+			} else if cursorPos == len(inp.history[0]) {
+				inp.history[0] = inp.history[0] + string(readRune)
+			} else if readRune != ')' || inp.history[0][cursorPos] != ')' {
+				inp.history[0] = inp.history[0][:cursorPos] + string(readRune) + inp.history[0][cursorPos:]
 			}
 
 			cursorPos++
-			prediction = getPrediction(history[0], cursorPos)
-			rewriteInputLine(writer, history[0], prediction, cursorPos)
+			prediction = inp.getPrediction(inp.history[0], cursorPos)
+			inp.rewriteInputLine(inp.history[0], prediction, cursorPos)
 		} else {
 			switch readRune {
 			case '\t':
 				// tab
 				if len(prediction) > 0 {
-					history[0] = history[0][:cursorPos] + prediction + history[0][cursorPos:]
+					inp.history[0] = inp.history[0][:cursorPos] + prediction + inp.history[0][cursorPos:]
 					cursorPos += len(prediction)
 					if prediction[len(prediction)-1] == ')' {
 						cursorPos--
 					}
 				}
 				prediction = ""
-				rewriteInputLine(writer, history[0], "", cursorPos)
+				inp.rewriteInputLine(inp.history[0], "", cursorPos)
 			case '\n', '\r':
 				// new line
-				writer.Write([]byte("\n"))
-				if historyIdx != 0 {
-					beg := history[1:historyIdx]
-					end := history[historyIdx+1:]
-					line := history[historyIdx]
-					history = append([]string{"", line}, append(beg, end...)...)
-					historyIdx = 0
+				inp.writer.Write([]byte("\n"))
+				if inp.historyIdx != 0 {
+					beg := inp.history[1:inp.historyIdx]
+					end := inp.history[inp.historyIdx+1:]
+					line := inp.history[inp.historyIdx]
+					inp.history = append([]string{"", line}, append(beg, end...)...)
+					inp.historyIdx = 0
 					return line, nil
 				} else {
-					history = append([]string{""}, history...)
-					return history[1], nil
+					inp.history = append([]string{""}, inp.history...)
+					return inp.history[1], nil
 				}
 			case '\u007F':
 				// backspace
-				if historyIdx > 0 {
-					history[0] = history[historyIdx]
-					historyIdx = 0
+				if inp.historyIdx > 0 {
+					inp.history[0] = inp.history[inp.historyIdx]
+					inp.historyIdx = 0
 				}
 
-				if len(history[0]) > 0 && cursorPos > 0 {
-					if cursorPos < len(history[0]) {
-						history[0] = history[0][:cursorPos-1] + history[0][cursorPos:]
+				if len(inp.history[0]) > 0 && cursorPos > 0 {
+					if cursorPos < len(inp.history[0]) {
+						inp.history[0] = inp.history[0][:cursorPos-1] + inp.history[0][cursorPos:]
 					} else {
-						history[0] = history[0][:cursorPos-1]
+						inp.history[0] = inp.history[0][:cursorPos-1]
 					}
 
 					cursorPos--
-					rewriteInputLine(writer, history[0], "", cursorPos)
+					inp.rewriteInputLine(inp.history[0], "", cursorPos)
 				}
 			case '\u001B':
 				// ANSI ESC command sequence
@@ -122,7 +134,7 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 					args []int
 				)
 
-				cmd, args = ansi.ReadCS(reader)
+				cmd, args = ansi.ReadCS(inp.reader)
 				if cmd == 0 {
 					continue
 				}
@@ -138,55 +150,55 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 					if cursorPos < 0 {
 						cursorPos = 0
 					}
-					rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+					inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 				case ansi.CUF:
 					// cursor right
-					if cursorPos < len(history[historyIdx]) {
+					if cursorPos < len(inp.history[inp.historyIdx]) {
 						cursorPos++
-						rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+						inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 					}
 				case ansi.CUU:
 					// cursor up
-					if historyIdx < len(history)-1 {
-						historyIdx++
-						cursorPos = len(history[historyIdx])
-						rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+					if inp.historyIdx < len(inp.history)-1 {
+						inp.historyIdx++
+						cursorPos = len(inp.history[inp.historyIdx])
+						inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 					}
 				case ansi.CUD:
 					// cursor down
-					if historyIdx > 0 {
-						historyIdx--
-						cursorPos = len(history[historyIdx])
-						rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+					if inp.historyIdx > 0 {
+						inp.historyIdx--
+						cursorPos = len(inp.history[inp.historyIdx])
+						inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 					}
 				case ansi.CPL:
 					// end
-					cursorPos = len(history[historyIdx])
-					rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+					cursorPos = len(inp.history[inp.historyIdx])
+					inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 				case ansi.CUP:
 					// home
 					cursorPos = 0
-					rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+					inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 				case ansi.VT:
 					switch args[0] {
 					case 1, 7:
 						// home
 						cursorPos = 0
-						rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+						inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 					case 4, 8:
 						// end
-						cursorPos = len(history[historyIdx])
-						rewriteInputLine(writer, history[historyIdx], "", cursorPos)
+						cursorPos = len(inp.history[inp.historyIdx])
+						inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 					case 3:
 						// forward delete
-						if historyIdx > 0 {
-							history[0] = history[historyIdx]
-							historyIdx = 0
+						if inp.historyIdx > 0 {
+							inp.history[0] = inp.history[inp.historyIdx]
+							inp.historyIdx = 0
 						}
 
-						if cursorPos < len(history[0]) {
-							history[0] = history[0][:cursorPos] + history[0][cursorPos+1:]
-							rewriteInputLine(writer, history[0], "", cursorPos)
+						if cursorPos < len(inp.history[0]) {
+							inp.history[0] = inp.history[0][:cursorPos] + inp.history[0][cursorPos+1:]
+							inp.rewriteInputLine(inp.history[0], "", cursorPos)
 						}
 					}
 				}
@@ -195,7 +207,7 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 	}
 }
 
-func getPrediction(str string, cpos int) string {
+func (inp *Console) getPrediction(str string, cpos int) string {
 	var cnt int
 	var wordUnderCursor utils.Word
 	words := utils.ParsePrompt(str)
@@ -224,7 +236,7 @@ func getPrediction(str string, cpos int) string {
 		return ""
 	}
 
-	predicted := Predict(wordUnderCursor.Literal)
+	predicted := inp.Predict(wordUnderCursor.Literal)
 	if len(predicted) == 0 {
 		return ""
 	}
@@ -232,7 +244,7 @@ func getPrediction(str string, cpos int) string {
 	return predicted[len(wordUnderCursor.Literal):]
 }
 
-func rewriteInputLine(writer io.Writer, str, prediction string, cpos int) {
+func (inp *Console) rewriteInputLine(str, prediction string, cpos int) {
 	var highlighted string
 
 	if len(prediction) > 0 {
@@ -241,10 +253,10 @@ func rewriteInputLine(writer io.Writer, str, prediction string, cpos int) {
 		highlighted = syntax.Highlight(str)
 	}
 
-	writer.Write([]byte("\n" + ansi.CreateCS(ansi.CUU, 1) + ansi.CreateCS(ansi.EL) + ">: " + highlighted))
+	inp.writer.Write([]byte("\n" + ansi.CreateCS(ansi.CUU, 1) + ansi.CreateCS(ansi.EL) + ">: " + highlighted))
 
 	coffset := (len(str) + len(prediction)) - cpos
 	if coffset > 0 {
-		ansi.WriteCS(writer, ansi.CUB, int64(coffset))
+		ansi.WriteCS(inp.writer, ansi.CUB, int64(coffset))
 	}
 }

@@ -1,7 +1,4 @@
-//go:build !nodefsystem
-// +build !nodefsystem
-
-package defaultsystem
+package builtin
 
 import (
 	"fmt"
@@ -10,47 +7,32 @@ import (
 	"path"
 	"time"
 
-	"github.com/dece2183/hexowl/builtin"
-	"github.com/dece2183/hexowl/builtin/types"
 	"github.com/dece2183/hexowl/input/terminal"
 )
 
-var DefaultSystem types.System
+type defaultSystem struct{}
 
-func init() {
-	DefaultSystem = types.System{
-		HighlightEnabled: true,
-		Stdout:           os.Stdout,
-		ClearScreen:      sysClearScreen,
-		RandomSeed:       time.Now().UnixNano(),
-		ListEnvironments: sysListEnv,
-		WriteEnvironment: sysWriteEnv,
-		ReadEnvironment:  sysReadEnv,
-		Exit:             sysExit,
-	}
-	builtin.SystemInit(DefaultSystem)
+func DefaultSystem() defaultSystem {
+	return defaultSystem{}
 }
 
-func sysClearScreen() {
-	fmt.Fprintf(DefaultSystem.Stdout, "\x1bc")
+func (sys defaultSystem) IsHighlightEnabled() bool {
+	return true
 }
 
-func sysGetEnvPath(envName string) (string, error) {
-	userDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("unable to get home directory")
-	}
-
-	saveDir := path.Join(userDir, ".hexowl/environment")
-	err = os.MkdirAll(saveDir, 0755)
-	if err != nil {
-		return "", fmt.Errorf("unable to make directory")
-	}
-
-	return path.Join(saveDir, envName) + ".json", nil
+func (sys defaultSystem) GetRandomSeed() int64 {
+	return time.Now().Unix()
 }
 
-func sysListEnv() ([]string, error) {
+func (sys defaultSystem) GetStdout() io.Writer {
+	return os.Stdout
+}
+
+func (sys defaultSystem) ClearScreen() {
+	fmt.Printf("\x1bc")
+}
+
+func (sys defaultSystem) ListEnvironments() ([]string, error) {
 	userDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get home directory")
@@ -90,8 +72,8 @@ func sysListEnv() ([]string, error) {
 	return envs, nil
 }
 
-func sysWriteEnv(name string) (io.WriteCloser, error) {
-	envPath, err := sysGetEnvPath(name)
+func (sys defaultSystem) WriteEnvironment(name string) (io.WriteCloser, error) {
+	envPath, err := getEnvPath(name)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +86,8 @@ func sysWriteEnv(name string) (io.WriteCloser, error) {
 	return f, nil
 }
 
-func sysReadEnv(name string) (io.ReadCloser, error) {
-	envPath, err := sysGetEnvPath(name)
+func (sys defaultSystem) ReadEnvironment(name string) (io.ReadCloser, error) {
+	envPath, err := getEnvPath(name)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +100,22 @@ func sysReadEnv(name string) (io.ReadCloser, error) {
 	return f, nil
 }
 
-func sysExit(errCode int) {
+func (sys defaultSystem) Exit(errCode int) {
 	terminal.DisableRawMode()
 	os.Exit(errCode)
+}
+
+func getEnvPath(envName string) (string, error) {
+	userDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("unable to get home directory")
+	}
+
+	saveDir := path.Join(userDir, ".hexowl/environment")
+	err = os.MkdirAll(saveDir, 0755)
+	if err != nil {
+		return "", fmt.Errorf("unable to make directory")
+	}
+
+	return path.Join(saveDir, envName) + ".json", nil
 }

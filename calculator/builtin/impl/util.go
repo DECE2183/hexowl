@@ -1,8 +1,8 @@
 package impl
 
 import (
-	"github.com/dece2183/hexowl/calculator/types"
-	"github.com/dece2183/hexowl/utils"
+	"github.com/dece2183/hexowl/v2/calculator/types"
+	"github.com/dece2183/hexowl/v2/utils"
 )
 
 func Clear(ctx *types.Context, args []interface{}) (interface{}, error) {

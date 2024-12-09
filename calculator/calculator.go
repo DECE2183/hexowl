@@ -1,11 +1,11 @@
 package calculator
 
 import (
-	"github.com/dece2183/hexowl/calculator/builtin"
-	"github.com/dece2183/hexowl/calculator/compiler"
-	"github.com/dece2183/hexowl/calculator/lexer"
-	"github.com/dece2183/hexowl/calculator/runtime"
-	"github.com/dece2183/hexowl/calculator/types"
+	"github.com/dece2183/hexowl/v2/calculator/builtin"
+	"github.com/dece2183/hexowl/v2/calculator/compiler"
+	"github.com/dece2183/hexowl/v2/calculator/lexer"
+	"github.com/dece2183/hexowl/v2/calculator/runtime"
+	"github.com/dece2183/hexowl/v2/calculator/types"
 )
 
 type Calculator struct {

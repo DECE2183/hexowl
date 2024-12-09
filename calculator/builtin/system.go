@@ -7,7 +7,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/dece2183/hexowl/input/terminal"
+	"github.com/dece2183/hexowl/v2/input/terminal"
 )
 
 type defaultSystem struct{}

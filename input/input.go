@@ -6,9 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dece2183/hexowl/input/ansi"
-	"github.com/dece2183/hexowl/input/syntax"
-	"github.com/dece2183/hexowl/utils"
+	"github.com/dece2183/hexowl/v2/input/ansi"
+	"github.com/dece2183/hexowl/v2/input/syntax"
+	"github.com/dece2183/hexowl/v2/utils"
 )
 
 type Predictable interface {

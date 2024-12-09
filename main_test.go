@@ -4,8 +4,8 @@ package main
 // 	"reflect"
 // 	"testing"
 
-// 	"github.com/dece2183/hexowl/operators"
-// 	"github.com/dece2183/hexowl/utils"
+// 	"github.com/dece2183/hexowl/v2/operators"
+// 	"github.com/dece2183/hexowl/v2/utils"
 // )
 
 // const testExpr = "a = pow(2,6) + (1)"

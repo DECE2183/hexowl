@@ -3,7 +3,7 @@ package lexer
 import (
 	"strings"
 
-	"github.com/dece2183/hexowl/calculator/types"
+	"github.com/dece2183/hexowl/v2/calculator/types"
 )
 
 const (

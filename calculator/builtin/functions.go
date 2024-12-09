@@ -1,8 +1,8 @@
 package builtin
 
 import (
-	"github.com/dece2183/hexowl/calculator/builtin/impl"
-	"github.com/dece2183/hexowl/calculator/types"
+	"github.com/dece2183/hexowl/v2/calculator/builtin/impl"
+	"github.com/dece2183/hexowl/v2/calculator/types"
 )
 
 var functions = types.BuiltinFunctionMap{

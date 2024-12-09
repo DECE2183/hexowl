@@ -3,8 +3,8 @@ package runtime
 import (
 	"fmt"
 
-	"github.com/dece2183/hexowl/calculator/compiler/stack"
-	"github.com/dece2183/hexowl/calculator/types"
+	"github.com/dece2183/hexowl/v2/calculator/compiler/stack"
+	"github.com/dece2183/hexowl/v2/calculator/types"
 )
 
 type Runtime struct {

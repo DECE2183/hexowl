@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/dece2183/hexowl/calculator"
-	"github.com/dece2183/hexowl/calculator/builtin"
-	"github.com/dece2183/hexowl/input"
-	"github.com/dece2183/hexowl/input/syntax"
-	"github.com/dece2183/hexowl/input/terminal"
-	"github.com/dece2183/hexowl/utils"
+	"github.com/dece2183/hexowl/v2/calculator"
+	"github.com/dece2183/hexowl/v2/calculator/builtin"
+	"github.com/dece2183/hexowl/v2/input"
+	"github.com/dece2183/hexowl/v2/input/syntax"
+	"github.com/dece2183/hexowl/v2/input/terminal"
+	"github.com/dece2183/hexowl/v2/utils"
 )
 
 func main() {

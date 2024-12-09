@@ -5,8 +5,8 @@ import (
 	"math"
 	"math/bits"
 
-	"github.com/dece2183/hexowl/calculator/types"
-	"github.com/dece2183/hexowl/utils"
+	"github.com/dece2183/hexowl/v2/calculator/types"
+	"github.com/dece2183/hexowl/v2/utils"
 )
 
 type actionHandler func(rn *Runtime, opLeft, opRight types.Value) (interface{}, error)

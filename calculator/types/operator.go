@@ -82,12 +82,6 @@ const (
 	// Non zero bits count operator.
 	O_POPCNT
 
-	O_LOCALVAR
-	O_USERVAR
-	O_CONSTANT
-	O_USERFUNC
-	O_BUILTINFUNC
-
 	// Call function operator.
 	O_CALLFUNC
 
@@ -142,12 +136,57 @@ var stringToOperatorMap = map[string]OperatorType{
 	"#": O_POPCNT,
 }
 
+var operatorToStringMap = map[OperatorType]string{
+	O_NONE:         "NONE",
+	O_DECLFUNC:     "DECLFUNC",
+	O_SEQUENCE:     "SEQUENCE",
+	O_ASSIGN:       "ASSIGN",
+	O_ASSIGNLOCAL:  "ASSIGNLOCAL",
+	O_ASSIGNMINUS:  "ASSIGNMINUS",
+	O_ASSIGNPLUS:   "ASSIGNPLUS",
+	O_ASSIGNMUL:    "ASSIGNMUL",
+	O_ASSIGNDIV:    "ASSIGNDIV",
+	O_ASSIGNBITAND: "ASSIGNBITAND",
+	O_ASSIGNBITOR:  "ASSIGNBITOR",
+	O_ENUMERATE:    "ENUMERATE",
+	O_LOGICOR:      "LOGICOR",
+	O_LOGICAND:     "LOGICAND",
+	O_EQUALITY:     "EQUALITY",
+	O_NOTEQ:        "NOTEQ",
+	O_MORE:         "MORE",
+	O_LESS:         "LESS",
+	O_MOREEQ:       "MOREEQ",
+	O_LESSEQ:       "LESSEQ",
+	O_PLUS:         "PLUS",
+	O_MINUS:        "MINUS",
+	O_MULTIPLY:     "MULTIPLY",
+	O_DIVIDE:       "DIVIDE",
+	O_MODULO:       "MODULO",
+	O_POWER:        "POWER",
+	O_BITOR:        "BITOR",
+	O_BITAND:       "BITAND",
+	O_BITXOR:       "BITXOR",
+	O_BITCLEAR:     "BITCLEAR",
+	O_BITINVERSE:   "BITINVERSE",
+	O_LEFTSHIFT:    "LEFTSHIFT",
+	O_RIGHTSHIFT:   "RIGHTSHIFT",
+	O_LOGICNOT:     "LOGICNOT",
+	O_POPCNT:       "POPCNT",
+	O_CALLFUNC:     "CALLFUNC",
+	O_COUNT:        "COUNT",
+	O_FLOW:         "FLOW",
+}
+
 func ParseOperator(str string) OperatorType {
 	return stringToOperatorMap[str]
 }
 
+func (op OperatorType) String() string {
+	return operatorToStringMap[op]
+}
+
 func (op OperatorType) IsUnary() bool {
-	return op == O_BITINVERSE || op == O_POPCNT || op == O_LOGICNOT
+	return op == O_MINUS || op == O_BITINVERSE || op == O_POPCNT || op == O_LOGICNOT
 }
 
 func (op OperatorType) IsAssign() bool {

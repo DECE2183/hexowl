@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dece2183/hexowl/v2/calculator"
 	"github.com/dece2183/hexowl/v2/calculator/builtin"
+	"github.com/dece2183/hexowl/v2/calculator/compiler"
+	"github.com/dece2183/hexowl/v2/calculator/lexer"
 	"github.com/dece2183/hexowl/v2/input"
 	"github.com/dece2183/hexowl/v2/input/syntax"
 	"github.com/dece2183/hexowl/v2/input/terminal"
@@ -33,7 +36,7 @@ func main() {
 		if len(expr) > 0 {
 			res, err := calc.Eval(expr)
 			if err != nil {
-				displayError(err)
+				displayError(5+len(os.Args[0]), expr, err)
 				os.Exit(1)
 			}
 
@@ -77,7 +80,7 @@ func main() {
 		continue
 
 	errorOccured:
-		displayError(err)
+		displayError(3, inputStr, err)
 	}
 }
 
@@ -127,6 +130,26 @@ func displayResult(result interface{}) {
 	fmt.Print("\n\tResult:" + syntax.Highlight(resultStr))
 }
 
-func displayError(err error) {
-	fmt.Print(syntax.Colorize("\n\tError occurred: ", syntax.C_ERROR), err, "\n\n")
+func displayError(offset int, inputStr string, err error) {
+	if compileError, ok := err.(*compiler.CompileError); ok {
+		tokens := lexer.Parse(inputStr)
+		strPos := 0
+		var str string
+		for i := range tokens {
+			str = strings.TrimLeft(inputStr, " ")
+			strPos += len(inputStr) - len(str)
+			if i == compileError.Pos {
+				break
+			}
+			inputStr = str[len(tokens[i].Literal):]
+			strPos += len(tokens[i].Literal)
+		}
+		str = strings.Repeat(" ", strPos+offset) + "^" + strings.Repeat("~", len(compileError.Token.Literal)-1)
+		fmt.Println(syntax.Colorize(str, syntax.C_ERROR))
+	} else {
+		fmt.Println()
+	}
+
+	fmt.Println(syntax.Colorize("\tError occurred:", syntax.C_ERROR), err)
+	fmt.Println()
 }

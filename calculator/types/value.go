@@ -4,6 +4,7 @@ type ValueType uint8
 
 const (
 	V_CONST ValueType = iota
+	V_VARNAME
 	V_LOCALVAR
 	V_USERVAR
 	V_BUILTINCONST
@@ -15,6 +16,7 @@ const (
 
 var valueToStringMap = map[ValueType]string{
 	V_CONST:        "constant value",
+	V_VARNAME:      "variable name",
 	V_LOCALVAR:     "local variable",
 	V_USERVAR:      "user variable",
 	V_BUILTINCONST: "built-in constant",
@@ -32,8 +34,16 @@ func (v ValueType) String() string {
 	return str
 }
 
+func (v ValueType) IsAssignable() bool {
+	return v > V_CONST && v < V_BUILTINCONST
+}
+
 func (v ValueType) IsFunc() bool {
-	return v > V_BUILTINCONST
+	return v == V_USERFUNC || v == V_BUILTINFUNC
+}
+
+func (v ValueType) IsFuncPtr() bool {
+	return v == V_LOCALFUNCPTR || v == V_FUNCPTR
 }
 
 type Value struct {

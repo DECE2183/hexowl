@@ -19,8 +19,6 @@ const (
 	T_OP
 	// Flow control (brackets).
 	T_CTL
-	// Detected function call.
-	T_FUNC
 	// String.
 	T_STR
 )

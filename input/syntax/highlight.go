@@ -6,29 +6,30 @@ package syntax
 import (
 	"strings"
 
-	"github.com/dece2183/hexowl/v2/utils"
+	"github.com/dece2183/hexowl/v2/calculator/lexer"
+	"github.com/dece2183/hexowl/v2/calculator/types"
 )
 
 func Highlight(str string) (out string) {
-	words := utils.ParsePrompt(str)
+	tokens := lexer.Parse(str)
 
-	for _, w := range words {
-		pos := strings.Index(str, w.Literal)
+	for _, t := range tokens {
+		pos := strings.Index(str, t.Literal)
 		if pos > 0 {
-			out += colors[utils.W_OP]
+			out += colors[types.T_OP]
 			out += str[:pos]
 			str = str[pos:]
 		}
 
-		clr, ok := colors[w.Type]
+		clr, ok := colors[t.Type]
 		if !ok {
 			return str
 		}
 
-		out += clr + w.Literal
+		out += clr + t.Literal
 
 		if len(str) > 0 {
-			str = str[len(w.Literal):]
+			str = str[len(t.Literal):]
 		}
 	}
 
@@ -36,7 +37,7 @@ func Highlight(str string) (out string) {
 	return
 }
 
-func Colorize(word string, wordType utils.WordType) string {
+func Colorize(word string, wordType types.TokenType) string {
 	clr, ok := colors[wordType]
 	if !ok {
 		return word

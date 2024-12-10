@@ -1,14 +1,16 @@
 package types
 
+import "slices"
+
 type ExecutionSequence struct {
 	sequence  []interface{}
-	localVars map[string]bool
+	localVars map[string]ValueType
 }
 
 func NewExecutionSequence() *ExecutionSequence {
 	return &ExecutionSequence{
 		sequence:  make([]interface{}, 0),
-		localVars: make(map[string]bool),
+		localVars: make(map[string]ValueType),
 	}
 }
 
@@ -34,14 +36,28 @@ func (seq *ExecutionSequence) AppendValue(v Value) {
 	seq.sequence = append(seq.sequence, v)
 }
 
+func (seq *ExecutionSequence) InsertValue(idx int, v Value) {
+	seq.sequence = slices.Insert(seq.sequence, idx, interface{}(v))
+}
+
 func (seq *ExecutionSequence) AppendOperator(op OperatorType) {
 	seq.sequence = append(seq.sequence, op)
 }
 
-func (seq *ExecutionSequence) SetLocalVariable(name string) {
-	seq.localVars[name] = true
+func (seq *ExecutionSequence) InsertOperator(idx int, op OperatorType) {
+	seq.sequence = slices.Insert(seq.sequence, idx, interface{}(op))
+}
+
+func (seq *ExecutionSequence) SetLocalVariable(v Value) {
+	seq.localVars[v.Value.(string)] = v.Type
+}
+
+func (seq *ExecutionSequence) GetLocalVariable(name string) (ValueType, bool) {
+	t, ok := seq.localVars[name]
+	return t, ok
 }
 
 func (seq *ExecutionSequence) HasLocalVariable(name string) bool {
-	return seq.localVars[name]
+	_, ok := seq.localVars[name]
+	return ok
 }

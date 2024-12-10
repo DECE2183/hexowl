@@ -6,9 +6,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/dece2183/hexowl/v2/calculator/lexer"
+	"github.com/dece2183/hexowl/v2/calculator/types"
 	"github.com/dece2183/hexowl/v2/input/ansi"
 	"github.com/dece2183/hexowl/v2/input/syntax"
-	"github.com/dece2183/hexowl/v2/utils"
 )
 
 type Predictable interface {
@@ -209,8 +210,8 @@ func (inp *Console) Prompt() (string, error) {
 
 func (inp *Console) getPrediction(str string, cpos int) string {
 	var cnt int
-	var wordUnderCursor utils.Word
-	words := utils.ParsePrompt(str)
+	var wordUnderCursor types.Token
+	words := lexer.Parse(str)
 
 	for _, w := range words {
 		pos := strings.Index(str, w.Literal)
@@ -232,7 +233,7 @@ func (inp *Console) getPrediction(str string, cpos int) string {
 		}
 	}
 
-	if wordUnderCursor.Type != utils.W_UNIT {
+	if wordUnderCursor.Type != types.T_UNIT {
 		return ""
 	}
 

@@ -16,16 +16,6 @@ var actionHandlerMap = map[types.OperatorType]actionHandler{
 		return nil, nil
 	},
 
-	types.O_LOCALVAR: func(rn *Runtime, opLeft, opRight types.Value) (interface{}, error) {
-		rn.localVars[opLeft.Value.(string)] = opRight.Value
-		return opRight.Value, nil
-	},
-
-	types.O_USERVAR: func(rn *Runtime, opLeft, opRight types.Value) (interface{}, error) {
-		rn.ctx.User.SetVariable(opLeft.Value.(string), opRight.Value)
-		return opRight.Value, nil
-	},
-
 	types.O_SEQUENCE: func(rn *Runtime, opLeft, opRight types.Value) (interface{}, error) {
 		return rn.obtainVariable(opRight)
 	},
@@ -41,7 +31,7 @@ var actionHandlerMap = map[types.OperatorType]actionHandler{
 		if err != nil {
 			return nil, err
 		}
-		if opLeft.Type == types.V_CONST {
+		if opLeft.Type != types.V_LOCALVAR {
 			opLeft.Type = types.V_USERVAR
 		}
 		return val, rn.assignValue(opLeft, val)

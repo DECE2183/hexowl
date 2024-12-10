@@ -23,7 +23,7 @@ func Funcs(ctx *types.Context, args []interface{}) (interface{}, error) {
 			funcName := fmt.Sprintf("%-12s", key)
 
 			if ctx.System.IsHighlightEnabled() {
-				fmt.Fprintf(ctx.System.GetStdout(), "\t\t%s%s\n", syntax.Colorize(funcName, utils.W_UNIT), syntax.Highlight(value.Variants[0].String()))
+				fmt.Fprintf(ctx.System.GetStdout(), "\t\t%s%s\n", syntax.Colorize(funcName, types.T_UNIT), syntax.Highlight(value.Variants[0].String()))
 			} else {
 				fmt.Fprintf(ctx.System.GetStdout(), "\t\t%s%s\n", funcName, value.Variants[0].String())
 			}
@@ -54,7 +54,7 @@ func Funcs(ctx *types.Context, args []interface{}) (interface{}, error) {
 			funcArgs := fmt.Sprintf("%-12s", value.Args)
 
 			if ctx.System.IsHighlightEnabled() {
-				fmt.Fprintf(ctx.System.GetStdout(), "\t\t%s%s - %s\n", syntax.Colorize(funcName, utils.W_FUNC), syntax.Highlight(funcArgs), value.Desc)
+				fmt.Fprintf(ctx.System.GetStdout(), "\t\t%s%s - %s\n", syntax.Colorize(funcName, types.T_UNIT), syntax.Highlight(funcArgs), value.Desc)
 			} else {
 				fmt.Fprintf(ctx.System.GetStdout(), "\t\t%s%s - %s\n", funcName, funcArgs, value.Desc)
 			}

@@ -3,7 +3,7 @@
 
 package syntax
 
-import "github.com/dece2183/hexowl/v2/calculator/types"
+import "github.com/dece2183/hexowl/v2/types"
 
 const (
 	// Normal text color

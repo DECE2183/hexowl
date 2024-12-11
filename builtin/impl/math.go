@@ -6,7 +6,7 @@ import (
 	"math/bits"
 	"math/rand"
 
-	"github.com/dece2183/hexowl/v2/calculator/types"
+	"github.com/dece2183/hexowl/v2/types"
 	"github.com/dece2183/hexowl/v2/utils"
 )
 

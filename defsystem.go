@@ -1,4 +1,7 @@
-package builtin
+//go:build !nodefsystem
+// +build !nodefsystem
+
+package hexowl
 
 import (
 	"fmt"

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dece2183/hexowl/v2/calculator/types"
 	"github.com/dece2183/hexowl/v2/input/syntax"
+	"github.com/dece2183/hexowl/v2/types"
 )
 
 func Vars(ctx *types.Context, args []interface{}) (interface{}, error) {

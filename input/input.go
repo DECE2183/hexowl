@@ -6,10 +6,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dece2183/hexowl/v2/calculator/lexer"
-	"github.com/dece2183/hexowl/v2/calculator/types"
 	"github.com/dece2183/hexowl/v2/input/ansi"
 	"github.com/dece2183/hexowl/v2/input/syntax"
+	"github.com/dece2183/hexowl/v2/lexer"
+	"github.com/dece2183/hexowl/v2/types"
 )
 
 type Predictable interface {

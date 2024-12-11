@@ -6,8 +6,8 @@ package syntax
 import (
 	"strings"
 
-	"github.com/dece2183/hexowl/v2/calculator/lexer"
-	"github.com/dece2183/hexowl/v2/calculator/types"
+	"github.com/dece2183/hexowl/v2/lexer"
+	"github.com/dece2183/hexowl/v2/types"
 )
 
 func Highlight(str string) (out string) {

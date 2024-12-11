@@ -6,18 +6,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dece2183/hexowl/v2/calculator"
-	"github.com/dece2183/hexowl/v2/calculator/builtin"
-	"github.com/dece2183/hexowl/v2/calculator/compiler"
-	"github.com/dece2183/hexowl/v2/calculator/lexer"
+	"github.com/dece2183/hexowl/v2"
+	"github.com/dece2183/hexowl/v2/compiler"
 	"github.com/dece2183/hexowl/v2/input"
 	"github.com/dece2183/hexowl/v2/input/syntax"
 	"github.com/dece2183/hexowl/v2/input/terminal"
+	"github.com/dece2183/hexowl/v2/lexer"
 	"github.com/dece2183/hexowl/v2/utils"
 )
 
 func main() {
-	calc := calculator.NewCalculator(builtin.DefaultSystem())
+	calc := hexowl.NewCalculator(hexowl.DefaultSystem())
 
 	if len(os.Args) > 1 {
 		var expr string

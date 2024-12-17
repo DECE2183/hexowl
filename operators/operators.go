@@ -384,14 +384,19 @@ func Generate(words []utils.Word, localVars map[string]interface{}) (*Operator, 
 			lit := words[minPriorityIndex-1].Literal
 
 			_, foundLocal := getLocalVariable(localVars, lit)
+			foundUser := user.HasVariable(lit)
 			if foundLocal || newOp.Type == OP_LOCALASSIGN {
-				localVars[lit] = nil
+				if !foundLocal {
+					localVars[lit] = nil
+				}
 				newOp.OperandA = &Operator{
 					Type:   OP_LOCALVAR,
 					Result: lit,
 				}
-			} else if user.HasVariable(lit) || newOp.Type == OP_ASSIGN {
-				user.SetVariable(lit, nil)
+			} else if foundUser || newOp.Type == OP_ASSIGN {
+				if !foundUser {
+					user.SetVariable(lit, nil)
+				}
 				newOp.OperandA = &Operator{
 					Type:   OP_USERVAR,
 					Result: lit,

@@ -17,7 +17,6 @@ var opActionListP *map[operatorType]action
 var opActionList = map[operatorType]action{
 
 	OP_NONE: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		user.SetVariable(op.OperandA.Result.(string), op.Result)
 		return op.Result, nil
 	},
 
@@ -63,37 +62,61 @@ var opActionList = map[operatorType]action{
 	},
 
 	OP_DECREMENT: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) - utils.ToNumber[float64](op.OperandB.Result)
+		opA, err := obtainVar(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
+		op.Result = utils.ToNumber[float64](opA) - utils.ToNumber[float64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},
 
 	OP_INCREMENT: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) + utils.ToNumber[float64](op.OperandB.Result)
+		opA, err := obtainVar(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
+		op.Result = utils.ToNumber[float64](opA) + utils.ToNumber[float64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},
 
 	OP_ASSIGNMUL: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		op.Result = utils.ToNumber[float64](op.OperandA.Result) * utils.ToNumber[float64](op.OperandB.Result)
+		opA, err := obtainVar(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
+		op.Result = utils.ToNumber[float64](opA) * utils.ToNumber[float64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},
 
 	OP_ASSIGNDIV: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
+		opA, err := obtainVar(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
 		opB := utils.ToNumber[float64](op.OperandB.Result)
 		if opB == 0 {
-			op.Result = math.Inf(int(utils.ToNumber[float64](op.OperandA.Result)))
+			op.Result = math.Inf(int(utils.ToNumber[float64](opA)))
 		} else {
-			op.Result = utils.ToNumber[float64](op.OperandA.Result) / opB
+			op.Result = utils.ToNumber[float64](opA) / opB
 		}
 		return opActionAssign(op, localVars)
 	},
 
 	OP_ASSIGNBITAND: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) & utils.ToNumber[uint64](op.OperandB.Result)
+		opA, err := obtainVar(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
+		op.Result = utils.ToNumber[uint64](opA) & utils.ToNumber[uint64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},
 
 	OP_ASSIGNBITOR: func(op *Operator, localVars map[string]interface{}) (interface{}, error) {
-		op.Result = utils.ToNumber[uint64](op.OperandA.Result) | utils.ToNumber[uint64](op.OperandB.Result)
+		opA, err := obtainVar(op.OperandA, localVars)
+		if err != nil {
+			return nil, err
+		}
+		op.Result = utils.ToNumber[uint64](opA) | utils.ToNumber[uint64](op.OperandB.Result)
 		return opActionAssign(op, localVars)
 	},
 
@@ -301,4 +324,22 @@ func opDoAction(op *Operator, localVars map[string]interface{}) (interface{}, er
 	} else {
 		return nil, fmt.Errorf("unable to find suitable action for operator type 0x%X", op.Type)
 	}
+}
+
+func obtainVar(op *Operator, localVars map[string]interface{}) (interface{}, error) {
+	var v interface{}
+	var ok bool
+
+	if op.Type == OP_LOCALVAR {
+		v, ok = localVars[op.Result.(string)]
+	} else if op.Type == OP_USERVAR {
+		v, ok = user.GetVariable(op.Result.(string))
+	} else {
+		return nil, fmt.Errorf("not a user variable '%s'", op.Result)
+	}
+
+	if !ok {
+		return nil, fmt.Errorf("unable to find '%s' user variable", op.Result)
+	}
+	return v, nil
 }

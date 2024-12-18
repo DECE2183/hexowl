@@ -86,6 +86,7 @@ func Prompt(writer io.Writer, reader *bufio.Reader) (string, error) {
 				rewriteInputLine(writer, history[0], "", cursorPos)
 			case '\n', '\r':
 				// new line
+				rewriteInputLine(writer, history[0], "", cursorPos)
 				writer.Write([]byte("\n"))
 				if historyIdx != 0 {
 					beg := history[1:historyIdx]

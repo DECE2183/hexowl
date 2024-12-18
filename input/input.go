@@ -99,6 +99,7 @@ func (inp *Console) Prompt() (string, error) {
 				inp.rewriteInputLine(inp.history[0], "", cursorPos)
 			case '\n', '\r':
 				// new line
+				inp.rewriteInputLine(inp.history[inp.historyIdx], "", cursorPos)
 				inp.writer.Write([]byte("\n"))
 				if inp.historyIdx != 0 {
 					beg := inp.history[1:inp.historyIdx]

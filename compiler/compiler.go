@@ -9,11 +9,18 @@ import (
 	"github.com/dece2183/hexowl/v2/utils/stack"
 )
 
+type assignment struct {
+	tokenPos    int
+	sequencePos int
+}
+
 func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence, error) {
 	var err error
-	var op types.OperatorType
+	var op types.Operator
 
-	opStack := make([]types.OperatorType, 0, len(tokens)/3)
+	declarationStack := make([]assignment, 0)
+	functionStack := make([]assignment, 0)
+	opStack := make([]types.Operator, 0, len(tokens)/3)
 	seq := types.NewExecutionSequence()
 
 	if len(tokens) == 0 {
@@ -30,70 +37,124 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 		case types.T_NONE:
 			continue
 		case types.T_OP:
-			op = types.ParseOperator(t.Literal)
+			opType := types.ParseOperator(t.Literal)
 			if ti == 0 || tokens[ti-1].Type == types.T_OP {
-				if !op.IsUnary() {
-					return nil, NewCompileError(t, ti, "missing left operand for the %s operator", op.String())
+				if !opType.IsUnary() {
+					return nil, NewCompileError(t, ti, "missing left operand for the %s operator", opType.String())
 				}
 				seq.AppendValue(types.Value{
-					Type:  types.V_CONST,
-					Value: 0,
+					Type:       types.V_CONST,
+					Value:      0,
+					TokenIndex: -1,
 				})
 			}
 			for len(opStack) > 0 {
 				_, sop := stack.Pop(opStack)
-				if sop <= op {
+				if sop.Type <= opType {
 					break
 				}
 				opStack, _ = stack.Pop(opStack)
+				if sop.Type == types.O_DECLFUNC {
+					var fn assignment
+					declarationStack, fn = stack.Pop(declarationStack)
+					bodySeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
+					seq.AppendValue(types.Value{
+						Type:       types.V_CONST,
+						Value:      bodySeq,
+						TokenIndex: -1,
+					})
+				}
 				seq.AppendOperator(sop)
 			}
-			if op.IsAssign() {
+			if opType.IsAssign() {
 				lastVal, ok := seq.GetValue(seq.Len() - 1)
 				if !ok {
-					op, _ = seq.GetOperator(seq.Len() - 1)
-					return nil, NewCompileError(t, ti, "%s operator is not allowed for assignment", op.String())
+					return nil, NewCompileError(t, ti, "there is no variable for assignment")
 				}
 				if lastVal.Type == types.V_CONST {
 					return nil, NewCompileError(tokens[ti-1], ti-1, "'%v' is not assignable", lastVal.Value)
 				}
-				if op == types.O_ASSIGNLOCAL {
-					seq.SetLocalVariable(lastVal)
+				if opType == types.O_ASSIGNLOCAL {
+					lastVal.Type = types.V_LOCALVAR
+				} else if opType == types.O_ASSIGN {
+					lastVal.Type = types.V_USERVAR
 				}
+				seq.SetValue(seq.Len()-1, lastVal)
+			} else if opType == types.O_DECLFUNC {
+				declarationStack = stack.Push(declarationStack, assignment{
+					tokenPos:    ti,
+					sequencePos: seq.Len(),
+				})
 			}
-			opStack = stack.Push(opStack, op)
+			opStack = stack.Push(opStack, types.Operator{
+				Type:       opType,
+				TokenIndex: ti,
+			})
 		case types.T_CTL:
 			if t.Literal == "(" {
-				opStack = stack.Push(opStack, types.O_FLOW)
+				opStack = stack.Push(opStack, types.Operator{
+					Type:       types.O_FLOW,
+					TokenIndex: ti,
+				})
 				if seq.Len() > 0 {
 					if val, ok := seq.GetValue(seq.Len() - 1); ok {
-						if val.Type.IsFunc() {
-							opStack = stack.Push(opStack, types.O_CALLFUNC)
-						} else {
-							return nil, NewCompileError(tokens[ti-1], ti-1, "'%v' is not a function", val.Value)
+						if val.Type.IsFunc() || val.Type == types.V_FUNCNAME {
+							opStack = stack.Push(opStack, types.Operator{
+								Type:       types.O_CALLFUNC,
+								TokenIndex: ti,
+							})
 						}
 					}
 				}
 			} else {
-				if len(opStack) == 0 {
-					return nil, NewCompileError(t, ti, "missing opening parenthesis")
-				}
+				var flowFound bool
 				for len(opStack) > 0 {
 					opStack, op = stack.Pop(opStack)
-					if op == types.O_FLOW {
+					if op.Type == types.O_FLOW {
+						flowFound = true
 						break
+					} else if op.Type == types.O_DECLFUNC {
+						var fn assignment
+						declarationStack, fn = stack.Pop(declarationStack)
+						bodySeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
+						seq.AppendValue(types.Value{
+							Type:       types.V_CONST,
+							Value:      bodySeq,
+							TokenIndex: -1,
+						})
 					}
 					seq.AppendOperator(op)
 				}
-				// detect function call with empty args
+				if !flowFound {
+					return nil, NewCompileError(t, ti, "missing opening parenthesis")
+				}
 				lastOp, ok := seq.GetOperator(seq.Len() - 1)
-				if ok && lastOp == types.O_CALLFUNC {
-					funcName, ok := seq.GetValue(seq.Len() - 2)
-					if ok && funcName.Type.IsFunc() {
-						seq.InsertValue(seq.Len()-1, types.Value{
-							Type:  types.V_CONST,
-							Value: 0,
+				if ok && lastOp.Type == types.O_CALLFUNC {
+					var fn assignment
+					functionStack, fn = stack.Pop(functionStack)
+					funcName, _ := seq.GetValue(fn.sequencePos)
+
+					if ti < len(tokens)-1 && tokens[ti+1].Type == types.T_OP && types.ParseOperator(tokens[ti+1].Literal) == types.O_DECLFUNC {
+						// function declaration
+						argsSeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
+						seq.AppendValue(types.Value{
+							Type:       types.V_FUNCARG,
+							Value:      argsSeq,
+							TokenIndex: -1,
 						})
+					} else {
+						// function call
+						if !funcName.Type.IsFunc() {
+							return nil, NewCompileError(tokens[funcName.TokenIndex], funcName.TokenIndex, "'%v' is not a function", funcName.Value)
+						}
+						// detect function call with empty args
+						if fn.tokenPos+2 == ti {
+							seq.InsertValue(seq.Len()-1, types.Value{
+								Type:       types.V_CONST,
+								Value:      0,
+								TokenIndex: -1,
+							})
+						}
 					}
 				}
 			}
@@ -109,8 +170,9 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				return nil, NewCompileError(t, ti, "unable to parse order part of literal '%s'", t.Literal)
 			}
 			seq.AppendValue(types.Value{
-				Type:  types.V_CONST,
-				Value: mantisse * math.Pow(10, order),
+				Type:       types.V_CONST,
+				Value:      mantisse * math.Pow(10, order),
+				TokenIndex: ti,
 			})
 		case types.T_NUM_DEC:
 			var val float64
@@ -119,8 +181,9 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				return nil, NewCompileError(t, ti, "unable to parse literal '%s' as number", t.Literal)
 			}
 			seq.AppendValue(types.Value{
-				Type:  types.V_CONST,
-				Value: val,
+				Type:       types.V_CONST,
+				Value:      val,
+				TokenIndex: ti,
 			})
 		case types.T_NUM_HEX:
 			var val uint64
@@ -129,8 +192,9 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				return nil, NewCompileError(t, ti, "unable to parse literal '%s' as hex number", t.Literal)
 			}
 			seq.AppendValue(types.Value{
-				Type:  types.V_CONST,
-				Value: val,
+				Type:       types.V_CONST,
+				Value:      val,
+				TokenIndex: ti,
 			})
 		case types.T_NUM_BIN:
 			var val uint64
@@ -139,33 +203,51 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				return nil, NewCompileError(t, ti, "unable to parse literal '%s' as bin number", t.Literal)
 			}
 			seq.AppendValue(types.Value{
-				Type:  types.V_CONST,
-				Value: val,
+				Type:       types.V_CONST,
+				Value:      val,
+				TokenIndex: ti,
 			})
 		case types.T_STR:
 			seq.AppendValue(types.Value{
-				Type:  types.V_CONST,
-				Value: t.Literal,
+				Type:       types.V_CONST,
+				Value:      t.Literal,
+				TokenIndex: ti,
 			})
 		case types.T_UNIT:
-			// Try to find variable
 			var valType types.ValueType
-			if seq.HasLocalVariable(t.Literal) {
-				valType = types.V_LOCALVAR
-			} else if ctx.User.HasVariable(t.Literal) {
-				valType = types.V_USERVAR
-			} else if ctx.Builtin.HasConstant(t.Literal) {
-				valType = types.V_BUILTINCONST
-			} else if ctx.User.HasFunction(t.Literal) {
-				valType = types.V_USERFUNC
-			} else if ctx.Builtin.HasFunction(t.Literal) {
-				valType = types.V_BUILTINFUNC
+
+			// Try to find variable
+			if ti < len(tokens)-1 && tokens[ti+1].Type == types.T_CTL && tokens[ti+1].Literal == "(" {
+				if seq.HasUserFunction(t.Literal) || ctx.User.HasFunction(t.Literal) {
+					valType = types.V_USERFUNC
+				} else if ctx.Builtin.HasFunction(t.Literal) {
+					valType = types.V_BUILTINFUNC
+				} else {
+					valType = types.V_FUNCNAME
+				}
 			} else {
-				valType = types.V_VARNAME
+				if seq.HasLocalVariable(t.Literal) {
+					valType = types.V_LOCALVAR
+				} else if seq.HasUserVariable(t.Literal) || ctx.User.HasVariable(t.Literal) {
+					valType = types.V_USERVAR
+				} else if ctx.Builtin.HasConstant(t.Literal) {
+					valType = types.V_BUILTINCONST
+				} else {
+					valType = types.V_VARNAME
+				}
 			}
+
+			if valType.IsFunc() || valType == types.V_FUNCNAME {
+				functionStack = stack.Push(functionStack, assignment{
+					tokenPos:    ti,
+					sequencePos: seq.Len(),
+				})
+			}
+
 			seq.AppendValue(types.Value{
-				Type:  valType,
-				Value: t.Literal,
+				Type:       valType,
+				Value:      t.Literal,
+				TokenIndex: ti,
 			})
 		default:
 			return nil, NewCompileError(t, ti, "unknown token #%d", t.Type)
@@ -174,6 +256,16 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 
 	for len(opStack) > 0 {
 		opStack, op = stack.Pop(opStack)
+		if op.Type == types.O_DECLFUNC {
+			var fn assignment
+			declarationStack, fn = stack.Pop(declarationStack)
+			bodySeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
+			seq.AppendValue(types.Value{
+				Type:       types.V_FUNCBODY,
+				Value:      bodySeq,
+				TokenIndex: -1,
+			})
+		}
 		seq.AppendOperator(op)
 	}
 

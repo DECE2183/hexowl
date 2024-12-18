@@ -1,20 +1,18 @@
 package types
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 type UserFunctionVariant struct {
-}
-
-// Return argument names of function variant as strings slice.
-func (v UserFunctionVariant) ArgNames() []string {
-	//TODO: implement
-	return []string{}
+	ArgsSequence *ExecutionSequence
+	BodySequence *ExecutionSequence
 }
 
 // fmt.Stringer interface implementation.
 func (v UserFunctionVariant) String() string {
-	//TODO: implement
-	return ""
+	return "(" + strings.Join(v.ArgsSequence.GetLocalsOrder(), ",") + ")"
 }
 
 type UserFunction struct {

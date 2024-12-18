@@ -40,20 +40,20 @@ func (rn *Runtime) Execute(seq *types.ExecutionSequence) (interface{}, error) {
 		switch node := n.(type) {
 		case types.Value:
 			valStack = stack.Push(valStack, node)
-		case types.OperatorType:
+		case types.Operator:
 			if len(valStack) > 0 {
 				valStack, opRight = stack.Pop(valStack)
 			} else {
-				return nil, fmt.Errorf("missing right operand for the %s operator", node.String())
+				return nil, fmt.Errorf("missing right operand for the %s operator", node.Type.String())
 			}
 
 			if len(valStack) > 0 {
 				valStack, opLeft = stack.Pop(valStack)
 			} else {
-				return nil, fmt.Errorf("missing left operand for the %s operator", node.String())
+				return nil, fmt.Errorf("missing left operand for the %s operator", node.Type.String())
 			}
 
-			handler, ok := actionHandlerMap[node]
+			handler, ok := actionHandlerMap[node.Type]
 			if !ok {
 				return nil, fmt.Errorf("unknown operator #%d", node)
 			}
@@ -75,15 +75,63 @@ func (rn *Runtime) Execute(seq *types.ExecutionSequence) (interface{}, error) {
 	return rn.obtainVariable(opLeft)
 }
 
-func (rn *Runtime) assignValue(variable types.Value, val interface{}) error {
-	switch variable.Type {
-	case types.V_LOCALVAR:
-		rn.localVars[variable.Value.(string)] = val
-	case types.V_USERVAR:
-		rn.ctx.User.SetVariable(variable.Value.(string), val)
-	default:
-		return fmt.Errorf("%s '%s' is not allowed for assignment", variable.Type.String(), variable.Value.(string))
+func (rn *Runtime) ExecuteUserFunction(fn types.UserFunction, args []interface{}) (interface{}, error) {
+variant:
+	for vari := range fn.Variants {
+		v := &fn.Variants[vari]
+		argNames := v.ArgsSequence.GetLocalsOrder()
+		if len(argNames) > 0 && len(argNames) != len(args) {
+			continue
+		}
+		newRn := NewRuntime(rn.ctx)
+		for i := range argNames {
+			newRn.SetLocalVariable(argNames[i], args[i])
+		}
+		res, err := newRn.Execute(v.ArgsSequence)
+		if err != nil {
+			return nil, err
+		}
+		switch result := res.(type) {
+		case []interface{}:
+			for i := range result {
+				if success, ok := result[i].(bool); ok && !success {
+					continue variant
+				}
+			}
+		case bool:
+			if !result {
+				continue
+			}
+		}
+
+		return newRn.Execute(v.BodySequence)
 	}
+
+	return nil, fmt.Errorf("unable to find user function variant")
+}
+
+func (rn *Runtime) assignValue(variable types.Value, val interface{}) error {
+	varname, ok := variable.Value.(string)
+	if !ok {
+		return fmt.Errorf("%s is not assignable", variable.Type.String())
+	}
+
+	if _, ok := rn.localVars[varname]; ok {
+		rn.localVars[varname] = val
+	} else {
+		rn.ctx.User.SetVariable(varname, val)
+	}
+
+	return nil
+}
+
+func (rn *Runtime) assignLocalValue(variable types.Value, val interface{}) error {
+	varname, ok := variable.Value.(string)
+	if !ok {
+		return fmt.Errorf("%s is not assignable", variable.Type.String())
+	}
+
+	rn.localVars[varname] = val
 	return nil
 }
 

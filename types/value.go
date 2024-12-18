@@ -5,6 +5,7 @@ type ValueType uint8
 const (
 	V_CONST ValueType = iota
 	V_VARNAME
+	V_FUNCNAME
 	V_LOCALVAR
 	V_USERVAR
 	V_BUILTINCONST
@@ -12,11 +13,14 @@ const (
 	V_BUILTINFUNC
 	V_LOCALFUNCPTR
 	V_FUNCPTR
+	V_FUNCARG
+	V_FUNCBODY
 )
 
 var valueToStringMap = map[ValueType]string{
 	V_CONST:        "constant value",
 	V_VARNAME:      "variable name",
+	V_FUNCNAME:     "function name",
 	V_LOCALVAR:     "local variable",
 	V_USERVAR:      "user variable",
 	V_BUILTINCONST: "built-in constant",
@@ -24,6 +28,8 @@ var valueToStringMap = map[ValueType]string{
 	V_BUILTINFUNC:  "built-in function",
 	V_LOCALFUNCPTR: "local pointer to function",
 	V_FUNCPTR:      "pointer to function",
+	V_FUNCARG:      "function arguments",
+	V_FUNCBODY:     "function body",
 }
 
 func (v ValueType) String() string {
@@ -47,6 +53,7 @@ func (v ValueType) IsFuncPtr() bool {
 }
 
 type Value struct {
-	Type  ValueType
-	Value interface{}
+	Type       ValueType
+	Value      interface{}
+	TokenIndex int
 }

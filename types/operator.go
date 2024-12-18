@@ -28,6 +28,8 @@ const (
 	// Assign after bitwise OR operator.
 	O_ASSIGNBITOR
 
+	// Call function operator.
+	O_CALLFUNC
 	// Enumerate values operator.
 	O_ENUMERATE
 
@@ -81,9 +83,6 @@ const (
 	O_LOGICNOT
 	// Non zero bits count operator.
 	O_POPCNT
-
-	// Call function operator.
-	O_CALLFUNC
 
 	// Operator count (utility value).
 	O_COUNT
@@ -191,4 +190,9 @@ func (op OperatorType) IsUnary() bool {
 
 func (op OperatorType) IsAssign() bool {
 	return op >= O_ASSIGN && op <= O_ASSIGNBITOR
+}
+
+type Operator struct {
+	Type       OperatorType
+	TokenIndex int
 }

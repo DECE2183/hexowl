@@ -32,7 +32,7 @@ func SetFunction(name string, function Func) {
 	functions[name] = function
 }
 
-// Set function varian for the funtion with given name.
+// Set function varian for the function with given name.
 func SetFunctionVariant(name string, variant FuncVariant) {
 	var currentFunc Func
 

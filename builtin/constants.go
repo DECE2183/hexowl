@@ -15,7 +15,7 @@ var constants = types.ConstantMap{
 	"true":    true,
 	"false":   false,
 	"help":    "Type in the expression you want to calc and press Enter to get the result.\n\tTo define a variable type its name and assign the value with '=' operator.\n\tType 'funcs()' to see all available functions.\n\tType 'vars()' to see all available variables.",
-	"version": "1.5.0",
+	"version": "1.5.1",
 }
 
 // Is constant with name presented in the builtin constant map.

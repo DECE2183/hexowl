@@ -87,12 +87,23 @@ variant:
 	for vari := range fn.Variants {
 		v := &fn.Variants[vari]
 		argsLen := v.Args.Sequence.LocalVariablesLen()
-		if argsLen > 0 && argsLen != len(args) {
+		vArgsPos, hasVArgs := v.Args.Sequence.GetLocalVariableIndex(types.K_VARGS)
+		if argsLen > 0 && argsLen != len(args) && !hasVArgs {
 			continue
 		}
 		newRn := NewRuntime(rn.ctx)
-		for i := 0; i < argsLen; i++ {
-			newRn.SetLocalVariable(i, args[i])
+		if hasVArgs {
+			for i := 0; i < vArgsPos; i++ {
+				newRn.SetLocalVariable(i, args[i])
+			}
+			for i := 1; i < argsLen-vArgsPos; i++ {
+				newRn.SetLocalVariable(argsLen-i, args[len(args)-i])
+			}
+			newRn.SetLocalVariable(vArgsPos, args[vArgsPos:len(args)-(argsLen-vArgsPos)+1])
+		} else {
+			for i := 0; i < argsLen; i++ {
+				newRn.SetLocalVariable(i, args[i])
+			}
 		}
 		res, err := newRn.Execute(v.Args.Sequence)
 		if err != nil {

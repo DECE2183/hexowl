@@ -127,6 +127,11 @@ func (seq *ExecutionSequence) HasLocalVariable(name string) bool {
 	return ok
 }
 
+func (seq *ExecutionSequence) GetLocalVariableIndex(name string) (int, bool) {
+	index, ok := seq.localVars[name]
+	return index, ok
+}
+
 func (seq *ExecutionSequence) HasUserVariable(name string) bool {
 	_, ok := seq.userVars[name]
 	return ok

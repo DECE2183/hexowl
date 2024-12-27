@@ -18,16 +18,16 @@ func implSEQUENCE(rn *Runtime, opLeft, opRight types.Value) (interface{}, error)
 }
 
 func implDECLFUNC(rn *Runtime, opLeft, opRight types.Value) (interface{}, error) {
-	args := opLeft.Value.(*types.ExecutionSequence)
-	funcName, _ := args.GetValue(0)
-	name := funcName.Value.(string)
-	args = args.ExtractSubsequence(1, args.Len()-1)
-	body := opRight.Value.(*types.ExecutionSequence)
-	rn.ctx.User.SetFunctionVariant(name, types.UserFunctionVariant{
-		ArgsSequence: args,
-		BodySequence: body,
-	})
-	userFunc, _ := rn.ctx.User.GetFunction(name)
+	var funcVar types.UserFunctionVariant
+	funcVar.Args = opLeft.Value.(types.UserFunctionPart)
+	funcVar.Body = opRight.Value.(types.UserFunctionPart)
+
+	funcName := funcVar.Args.Definition[0].Literal
+	funcVar.Args.Definition = funcVar.Args.Definition[2 : len(funcVar.Args.Definition)-1]
+	funcVar.Args.Sequence = funcVar.Args.Sequence.ExtractSubsequence(1, funcVar.Args.Sequence.Len()-1)
+	rn.ctx.User.SetFunctionVariant(funcName, funcVar)
+
+	userFunc, _ := rn.ctx.User.GetFunction(funcName)
 	return userFunc, nil
 }
 

@@ -5,17 +5,16 @@ import (
 )
 
 type ExecutionSequence struct {
-	sequence   []interface{}
-	localOrder []string
-	localVars  map[string]bool
-	userVars   map[string]bool
-	userFuncs  map[string]bool
+	sequence  []interface{}
+	localVars map[string]int
+	userVars  map[string]bool
+	userFuncs map[string]bool
 }
 
 func NewExecutionSequence() *ExecutionSequence {
 	return &ExecutionSequence{
 		sequence:  make([]interface{}, 0),
-		localVars: make(map[string]bool),
+		localVars: make(map[string]int),
 		userVars:  make(map[string]bool),
 		userFuncs: make(map[string]bool),
 	}
@@ -24,7 +23,7 @@ func NewExecutionSequence() *ExecutionSequence {
 func (seq *ExecutionSequence) ExtractSubsequence(startPos, endPos int) *ExecutionSequence {
 	s := &ExecutionSequence{
 		sequence:  make([]interface{}, endPos-startPos),
-		localVars: make(map[string]bool),
+		localVars: make(map[string]int),
 		userVars:  make(map[string]bool),
 		userFuncs: make(map[string]bool),
 	}
@@ -37,12 +36,24 @@ func (seq *ExecutionSequence) ExtractSubsequence(startPos, endPos int) *Executio
 		}
 		switch val.Type {
 		case V_LOCALVAR, V_VARNAME:
-			varname := val.Value.(string)
-			_, exists := s.localVars[varname]
-			if !exists {
-				s.localVars[varname] = true
-				s.localOrder = append(s.localOrder, varname)
+			switch varName := val.Value.(type) {
+			case int:
+				for key, index := range seq.localVars {
+					if index == varName {
+						s.localVars[key] = index
+						break
+					}
+				}
+			case string:
+				varIndex, exists := s.localVars[varName]
+				if !exists {
+					varIndex = len(s.localVars)
+					s.localVars[varName] = varIndex
+					seq.localVars[varName] = varIndex
+				}
+				val.Value = varIndex
 			}
+
 			if val.Type == V_VARNAME {
 				val.Type = V_LOCALVAR
 				s.sequence[i] = val
@@ -66,6 +77,10 @@ func (seq *ExecutionSequence) Len() int {
 	return len(seq.sequence)
 }
 
+func (seq *ExecutionSequence) LocalVariablesLen() int {
+	return len(seq.localVars)
+}
+
 func (seq *ExecutionSequence) GetSequence() []interface{} {
 	return seq.sequence
 }
@@ -76,39 +91,18 @@ func (seq *ExecutionSequence) GetValue(idx int) (Value, bool) {
 }
 
 func (seq *ExecutionSequence) SetValue(idx int, v Value) {
+	seq.prepareVal(&v)
 	seq.sequence[idx] = v
-	switch v.Type {
-	case V_LOCALVAR:
-		seq.localVars[v.Value.(string)] = true
-	case V_USERVAR:
-		seq.userVars[v.Value.(string)] = true
-	case V_USERFUNC:
-		seq.userFuncs[v.Value.(string)] = true
-	}
 }
 
 func (seq *ExecutionSequence) InsertValue(idx int, v Value) {
+	seq.prepareVal(&v)
 	seq.sequence = slices.Insert(seq.sequence, idx, interface{}(v))
-	switch v.Type {
-	case V_LOCALVAR:
-		seq.localVars[v.Value.(string)] = true
-	case V_USERVAR:
-		seq.userVars[v.Value.(string)] = true
-	case V_USERFUNC:
-		seq.userFuncs[v.Value.(string)] = true
-	}
 }
 
 func (seq *ExecutionSequence) AppendValue(v Value) {
+	seq.prepareVal(&v)
 	seq.sequence = append(seq.sequence, v)
-	switch v.Type {
-	case V_LOCALVAR:
-		seq.localVars[v.Value.(string)] = true
-	case V_USERVAR:
-		seq.userVars[v.Value.(string)] = true
-	case V_USERFUNC:
-		seq.userFuncs[v.Value.(string)] = true
-	}
 }
 
 func (seq *ExecutionSequence) GetOperator(idx int) (Operator, bool) {
@@ -143,6 +137,26 @@ func (seq *ExecutionSequence) HasUserFunction(name string) bool {
 	return ok
 }
 
-func (seq *ExecutionSequence) GetLocalsOrder() []string {
-	return seq.localOrder
+func (seq *ExecutionSequence) prepareVal(v *Value) {
+	if !v.Type.IsAssignable() {
+		return
+	}
+
+	valName := v.Value.(string)
+
+	switch v.Type {
+	case V_LOCALVAR:
+		var varIndex int
+		if index, ok := seq.localVars[valName]; ok {
+			varIndex = index
+		} else {
+			varIndex = len(seq.localVars)
+			seq.localVars[valName] = varIndex
+		}
+		v.Value = varIndex
+	case V_USERVAR:
+		seq.userVars[valName] = true
+	case V_USERFUNC:
+		seq.userFuncs[valName] = true
+	}
 }

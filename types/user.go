@@ -5,14 +5,37 @@ import (
 	"strings"
 )
 
+type UserFunctionPart struct {
+	Definition []Token
+	Sequence   *ExecutionSequence
+}
+
 type UserFunctionVariant struct {
-	ArgsSequence *ExecutionSequence
-	BodySequence *ExecutionSequence
+	Args UserFunctionPart
+	Body UserFunctionPart
+}
+
+func (v UserFunctionVariant) ArgsDefinition() string {
+	str := &strings.Builder{}
+	str.WriteRune('(')
+	for _, t := range v.Args.Definition {
+		str.WriteString(t.Literal)
+	}
+	str.WriteRune(')')
+	return str.String()
+}
+
+func (v UserFunctionVariant) BodyDefinition() string {
+	str := &strings.Builder{}
+	for _, t := range v.Body.Definition {
+		str.WriteString(t.Literal)
+	}
+	return str.String()
 }
 
 // fmt.Stringer interface implementation.
 func (v UserFunctionVariant) String() string {
-	return "(" + strings.Join(v.ArgsSequence.GetLocalsOrder(), ",") + ")"
+	return v.ArgsDefinition() + " -> " + v.BodyDefinition()
 }
 
 type UserFunction struct {

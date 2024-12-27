@@ -55,14 +55,7 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				}
 				opStack, _ = stack.Pop(opStack)
 				if sop.Type == types.O_DECLFUNC {
-					var fn assignment
-					declarationStack, fn = stack.Pop(declarationStack)
-					bodySeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
-					seq.AppendValue(types.Value{
-						Type:       types.V_CONST,
-						Value:      bodySeq,
-						TokenIndex: -1,
-					})
+					//TODO: implement stack.Pop(declarationStack)
 				}
 				seq.AppendOperator(sop)
 			}
@@ -114,14 +107,7 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 						flowFound = true
 						break
 					} else if op.Type == types.O_DECLFUNC {
-						var fn assignment
-						declarationStack, fn = stack.Pop(declarationStack)
-						bodySeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
-						seq.AppendValue(types.Value{
-							Type:       types.V_CONST,
-							Value:      bodySeq,
-							TokenIndex: -1,
-						})
+						//TODO: implement stack.Pop(declarationStack)
 					}
 					seq.AppendOperator(op)
 				}
@@ -138,8 +124,11 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 						// function declaration
 						argsSeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
 						seq.AppendValue(types.Value{
-							Type:       types.V_FUNCARG,
-							Value:      argsSeq,
+							Type: types.V_FUNCARG,
+							Value: types.UserFunctionPart{
+								Definition: tokens[fn.tokenPos : ti+1],
+								Sequence:   argsSeq,
+							},
 							TokenIndex: -1,
 						})
 					} else {
@@ -261,8 +250,11 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 			declarationStack, fn = stack.Pop(declarationStack)
 			bodySeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
 			seq.AppendValue(types.Value{
-				Type:       types.V_FUNCBODY,
-				Value:      bodySeq,
+				Type: types.V_FUNCBODY,
+				Value: types.UserFunctionPart{
+					Definition: tokens[fn.tokenPos+1:],
+					Sequence:   bodySeq,
+				},
 				TokenIndex: -1,
 			})
 		}

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/dece2183/hexowl/v2/types"
 	"github.com/dece2183/hexowl/v2/utils/stack"
@@ -9,27 +10,33 @@ import (
 
 type Runtime struct {
 	ctx       *types.Context
-	localVars map[string]interface{}
+	localVars []interface{}
 }
 
 func NewRuntime(ctx *types.Context) *Runtime {
 	return &Runtime{
 		ctx:       ctx,
-		localVars: make(map[string]interface{}),
+		localVars: make([]interface{}, 0),
 	}
 }
 
 func (rn *Runtime) Reset() {
-	rn.localVars = make(map[string]interface{})
+	rn.localVars = make([]interface{}, 0)
 }
 
-func (rn *Runtime) SetLocalVariable(name string, val interface{}) {
-	rn.localVars[name] = val
+func (rn *Runtime) SetLocalVariable(index int, val interface{}) {
+	rn.localVars = slices.Grow(rn.localVars, index+1)
+	for index >= len(rn.localVars) {
+		rn.localVars = append(rn.localVars, nil)
+	}
+	rn.localVars[index] = val
 }
 
-func (rn *Runtime) GetLocalVariable(name string) (interface{}, bool) {
-	val, ok := rn.localVars[name]
-	return val, ok
+func (rn *Runtime) GetLocalVariable(index int) (interface{}, bool) {
+	if index >= len(rn.localVars) {
+		return nil, false
+	}
+	return rn.localVars[index], true
 }
 
 func (rn *Runtime) Execute(seq *types.ExecutionSequence) (interface{}, error) {
@@ -79,15 +86,15 @@ func (rn *Runtime) ExecuteUserFunction(fn types.UserFunction, args []interface{}
 variant:
 	for vari := range fn.Variants {
 		v := &fn.Variants[vari]
-		argNames := v.ArgsSequence.GetLocalsOrder()
-		if len(argNames) > 0 && len(argNames) != len(args) {
+		argsLen := v.Args.Sequence.LocalVariablesLen()
+		if argsLen > 0 && argsLen != len(args) {
 			continue
 		}
 		newRn := NewRuntime(rn.ctx)
-		for i := range argNames {
-			newRn.SetLocalVariable(argNames[i], args[i])
+		for i := 0; i < argsLen; i++ {
+			newRn.SetLocalVariable(i, args[i])
 		}
-		res, err := newRn.Execute(v.ArgsSequence)
+		res, err := newRn.Execute(v.Args.Sequence)
 		if err != nil {
 			return nil, err
 		}
@@ -104,40 +111,46 @@ variant:
 			}
 		}
 
-		return newRn.Execute(v.BodySequence)
+		return newRn.Execute(v.Body.Sequence)
 	}
 
 	return nil, fmt.Errorf("unable to find user function variant")
 }
 
 func (rn *Runtime) assignValue(variable types.Value, val interface{}) error {
-	varname, ok := variable.Value.(string)
-	if !ok {
+	switch varname := variable.Value.(type) {
+	case int:
+		if varname >= len(rn.localVars) {
+			return fmt.Errorf("%s is not assignable", variable.Type.String())
+		}
+		rn.localVars[varname] = val
+	case string:
+		rn.ctx.User.SetVariable(varname, val)
+	default:
 		return fmt.Errorf("%s is not assignable", variable.Type.String())
 	}
-
-	if _, ok := rn.localVars[varname]; ok {
-		rn.localVars[varname] = val
-	} else {
-		rn.ctx.User.SetVariable(varname, val)
-	}
-
 	return nil
 }
 
 func (rn *Runtime) assignLocalValue(variable types.Value, val interface{}) error {
-	varname, ok := variable.Value.(string)
+	varIndex, ok := variable.Value.(int)
 	if !ok {
 		return fmt.Errorf("%s is not assignable", variable.Type.String())
 	}
 
-	rn.localVars[varname] = val
+	rn.SetLocalVariable(varIndex, val)
 	return nil
 }
 
 func (rn *Runtime) obtainVariable(variable types.Value) (interface{}, error) {
 	if variable.Type == types.V_CONST {
 		return variable.Value, nil
+	} else if variable.Type == types.V_LOCALVAR {
+		varIndex := variable.Value.(int)
+		if varIndex >= len(rn.localVars) {
+			return nil, fmt.Errorf("there is no #%d local variable", varIndex)
+		}
+		return rn.localVars[varIndex], nil
 	}
 
 	var (
@@ -148,25 +161,21 @@ func (rn *Runtime) obtainVariable(variable types.Value) (interface{}, error) {
 	varName := variable.Value.(string)
 
 	switch variable.Type {
-	case types.V_LOCALVAR:
-		if val, ok = rn.localVars[varName]; !ok {
-			return nil, fmt.Errorf("'%s' is not a local variable", varName)
-		}
 	case types.V_USERVAR:
 		if val, ok = rn.ctx.User.GetVariable(varName); !ok {
-			return nil, fmt.Errorf("'%s' is not a user variable", varName)
+			return nil, fmt.Errorf("not found user variable '%s'", varName)
 		}
 	case types.V_BUILTINCONST:
 		if val, ok = rn.ctx.Builtin.GetConstant(varName); !ok {
-			return nil, fmt.Errorf("'%s' is not a built-in constant", varName)
+			return nil, fmt.Errorf("not found built-in constant '%s'", varName)
 		}
 	case types.V_USERFUNC:
 		if val, ok = rn.ctx.User.GetFunction(varName); !ok {
-			return nil, fmt.Errorf("'%s' is not a user function", varName)
+			return nil, fmt.Errorf("not found user function '%s'", varName)
 		}
 	case types.V_BUILTINFUNC:
 		if val, ok = rn.ctx.Builtin.GetFunction(varName); !ok {
-			return nil, fmt.Errorf("'%s' is not a built-in function", varName)
+			return nil, fmt.Errorf("not found built-in function '%s'", varName)
 		}
 	case types.V_LOCALFUNCPTR:
 	case types.V_FUNCPTR:

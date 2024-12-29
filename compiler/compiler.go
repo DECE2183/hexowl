@@ -121,6 +121,23 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 					funcName, _ := seq.GetValue(fn.sequencePos)
 
 					if ti < len(tokens)-1 && tokens[ti+1].Type == types.T_OP && types.ParseOperator(tokens[ti+1].Literal) == types.O_DECLFUNC {
+						// detect arguments declaration
+						for i, argFund := fn.sequencePos+1, false; i < seq.Len(); i++ {
+							v, isVal := seq.GetValue(i)
+							if !isVal {
+								argFund = false
+								continue
+							}
+							if argFund {
+								continue
+							}
+							if v.Type != types.V_VARNAME && v.Type != types.V_USERVAR {
+								continue
+							}
+							v.Type = types.V_LOCALVAR
+							seq.SetValue(i, v)
+							argFund = true
+						}
 						// function declaration
 						argsSeq := seq.ExtractSubsequence(fn.sequencePos, seq.Len())
 						seq.AppendValue(types.Value{

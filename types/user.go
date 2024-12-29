@@ -6,12 +6,16 @@ import (
 )
 
 type UserFunctionPart struct {
+	// Original input
 	Definition []Token
-	Sequence   *ExecutionSequence
+	// Execution sequence
+	Sequence *ExecutionSequence
 }
 
 type UserFunctionVariant struct {
+	// Arguments definition
 	Args UserFunctionPart
+	// Body definition
 	Body UserFunctionPart
 }
 

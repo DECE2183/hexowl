@@ -87,7 +87,9 @@ const (
 	// Operator count (utility value).
 	O_COUNT
 	// Flow control operator.
-	O_FLOW OperatorType = -1
+	O_FLOWBEG OperatorType = -1
+	// Flow control operator.
+	O_FLOWEND OperatorType = -2
 )
 
 var stringToOperatorMap = map[string]OperatorType{
@@ -133,6 +135,9 @@ var stringToOperatorMap = map[string]OperatorType{
 
 	"!": O_LOGICNOT,
 	"#": O_POPCNT,
+
+	"(": O_FLOWBEG,
+	")": O_FLOWEND,
 }
 
 var operatorToStringMap = map[OperatorType]string{
@@ -173,7 +178,8 @@ var operatorToStringMap = map[OperatorType]string{
 	O_POPCNT:       "POPCNT",
 	O_CALLFUNC:     "CALLFUNC",
 	O_COUNT:        "COUNT",
-	O_FLOW:         "FLOW",
+	O_FLOWBEG:      "FLOWBEG",
+	O_FLOWEND:      "FLOWEND",
 }
 
 func ParseOperator(str string) OperatorType {

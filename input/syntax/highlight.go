@@ -13,7 +13,17 @@ import (
 func Highlight(str string) (out string) {
 	tokens := lexer.Parse(str)
 
+	var clr string
+	var ok bool
+
 	for _, t := range tokens {
+		switch t.Type {
+		case types.T_NUM_HEX:
+			t.Literal = "0x" + t.Literal
+		case types.T_NUM_BIN:
+			t.Literal = "0b" + t.Literal
+		}
+
 		pos := strings.Index(str, t.Literal)
 		if pos > 0 {
 			out += colors[types.T_OP]
@@ -21,19 +31,24 @@ func Highlight(str string) (out string) {
 			str = str[pos:]
 		}
 
-		clr, ok := colors[t.Type]
+		clr, ok = colors[t.Type]
 		if !ok {
-			return str
+			out += colors[C_NORMAL]
+		} else {
+			out += clr
 		}
 
-		out += clr + t.Literal
-
+		out += t.Literal
 		if len(str) > 0 {
 			str = str[len(t.Literal):]
 		}
 	}
 
-	out += str + colors[C_NORMAL]
+	if len(clr) > 0 {
+		out += colors[C_NORMAL]
+	}
+
+	out += str
 	return
 }
 

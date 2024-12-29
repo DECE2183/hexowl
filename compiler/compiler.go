@@ -86,7 +86,7 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 		case types.T_CTL:
 			if t.Literal == "(" {
 				opStack = stack.Push(opStack, types.Operator{
-					Type:       types.O_FLOW,
+					Type:       types.O_FLOWBEG,
 					TokenIndex: ti,
 				})
 				if seq.Len() > 0 {
@@ -103,7 +103,7 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				var flowFound bool
 				for len(opStack) > 0 {
 					opStack, op = stack.Pop(opStack)
-					if op.Type == types.O_FLOW {
+					if op.Type == types.O_FLOWBEG {
 						flowFound = true
 						break
 					} else if op.Type == types.O_DECLFUNC {
@@ -222,8 +222,13 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 		case types.T_UNIT:
 			var valType types.ValueType
 
-			// Try to find variable
-			if ti < len(tokens)-1 && tokens[ti+1].Type == types.T_CTL && tokens[ti+1].Literal == "(" {
+			var nextOp types.OperatorType
+			if ti < len(tokens)-1 {
+				nextOp = types.ParseOperator(tokens[ti+1].Literal)
+			}
+
+			if nextOp == types.O_FLOWBEG {
+				// Try to find function
 				if seq.HasUserFunction(t.Literal) || ctx.User.HasFunction(t.Literal) {
 					valType = types.V_USERFUNC
 				} else if ctx.Builtin.HasFunction(t.Literal) {
@@ -231,23 +236,28 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				} else {
 					valType = types.V_FUNCNAME
 				}
+
+				functionStack = stack.Push(functionStack, assignment{
+					tokenPos:    ti,
+					sequencePos: seq.Len(),
+				})
 			} else {
+				// Try to find variable
 				if seq.HasLocalVariable(t.Literal) {
 					valType = types.V_LOCALVAR
 				} else if seq.HasUserVariable(t.Literal) || ctx.User.HasVariable(t.Literal) {
 					valType = types.V_USERVAR
 				} else if ctx.Builtin.HasConstant(t.Literal) {
 					valType = types.V_BUILTINCONST
-				} else {
+				} else if nextOp == types.O_ASSIGN || nextOp == types.O_ASSIGNLOCAL || nextOp == types.O_ENUMERATE || nextOp == types.O_FLOWEND {
 					valType = types.V_VARNAME
+				} else if seq.HasUserFunction(t.Literal) || ctx.User.HasFunction(t.Literal) {
+					valType = types.V_USERFUNC
+				} else if ctx.Builtin.HasFunction(t.Literal) {
+					valType = types.V_BUILTINFUNC
+				} else {
+					return nil, NewCompileError(t, ti, "unknown variable '%s'", t.Literal)
 				}
-			}
-
-			if valType.IsFunc() || valType == types.V_FUNCNAME {
-				functionStack = stack.Push(functionStack, assignment{
-					tokenPos:    ti,
-					sequencePos: seq.Len(),
-				})
 			}
 
 			seq.AppendValue(types.Value{
@@ -256,7 +266,7 @@ func Compile(ctx *types.Context, tokens []types.Token) (*types.ExecutionSequence
 				TokenIndex: ti,
 			})
 		default:
-			return nil, NewCompileError(t, ti, "unknown token #%d", t.Type)
+			return nil, NewCompileError(t, ti, "unknown token #%d '%s'", t.Type, t.Literal)
 		}
 	}
 

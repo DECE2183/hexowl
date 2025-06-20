@@ -1,6 +1,8 @@
 package hexowl
 
 import (
+	"strings"
+
 	"github.com/dece2183/hexowl/v2/builtin"
 	"github.com/dece2183/hexowl/v2/compiler"
 	"github.com/dece2183/hexowl/v2/lexer"
@@ -29,19 +31,22 @@ func (calc *Calculator) GetUserContainer() *types.UserContainer {
 	return &calc.ctx.User
 }
 
-func (calc *Calculator) Eval(str string) (interface{}, error) {
-	tokens := lexer.Parse(str)
+func (calc *Calculator) Eval(str string) (result interface{}, err error) {
+	lines := strings.Split(str, "\n")
+	for _, ln := range lines {
+		tokens := lexer.Parse(ln)
 
-	seq, err := compiler.Compile(calc.ctx, tokens)
-	if err != nil {
-		return nil, err
+		var seq *types.ExecutionSequence
+		seq, err = compiler.Compile(calc.ctx, tokens)
+		if err != nil {
+			return
+		}
+
+		rn := runtime.NewRuntime(calc.ctx)
+		result, err = rn.Execute(seq)
+		if err != nil {
+			return
+		}
 	}
-
-	rn := runtime.NewRuntime(calc.ctx)
-	result, err := rn.Execute(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return
 }

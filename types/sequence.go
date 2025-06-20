@@ -1,8 +1,24 @@
 package types
 
 import (
+	"fmt"
 	"slices"
 )
+
+type BadSequence struct {
+	Value    *Value
+	Operator *Operator
+	Index    int
+}
+
+func (bs *BadSequence) Error() string {
+	if bs.Value != nil {
+		return fmt.Sprintf("bad sequence value {%+v} at #%d", bs.Value, bs.Index)
+	} else if bs.Operator != nil {
+		return fmt.Sprintf("bad sequence operator {%+v} at #%d", bs.Operator, bs.Index)
+	}
+	return fmt.Sprintf("bad sequence at #%d", bs.Index)
+}
 
 type ExecutionSequence struct {
 	sequence  []interface{}
@@ -20,7 +36,7 @@ func NewExecutionSequence() *ExecutionSequence {
 	}
 }
 
-func (seq *ExecutionSequence) ExtractSubsequence(startPos, endPos int) *ExecutionSequence {
+func (seq *ExecutionSequence) ExtractSubsequence(startPos, endPos int) (*ExecutionSequence, error) {
 	s := &ExecutionSequence{
 		sequence:  make([]interface{}, endPos-startPos),
 		localVars: make(map[string]int),
@@ -35,6 +51,29 @@ func (seq *ExecutionSequence) ExtractSubsequence(startPos, endPos int) *Executio
 			continue
 		}
 		switch val.Type {
+		case V_UNKNOWN:
+			varName, ok := val.Value.(string)
+			if !ok {
+				return nil, &BadSequence{
+					Value: &val,
+					Index: i,
+				}
+			}
+			_, exists := s.localVars[varName]
+			if !exists {
+				return nil, &BadSequence{
+					Value: &val,
+					Index: i,
+				}
+			}
+		case V_FUNCNAME:
+			_, exists := s.userFuncs[val.Value.(string)]
+			if !exists {
+				return nil, &BadSequence{
+					Value: &val,
+					Index: i,
+				}
+			}
 		case V_LOCALVAR, V_VARNAME:
 			switch varName := val.Value.(type) {
 			case int:
@@ -60,17 +99,13 @@ func (seq *ExecutionSequence) ExtractSubsequence(startPos, endPos int) *Executio
 			}
 		case V_USERVAR:
 			s.userVars[val.Value.(string)] = true
-		case V_USERFUNC, V_FUNCNAME:
+		case V_USERFUNC:
 			s.userFuncs[val.Value.(string)] = true
-			if val.Type == V_FUNCNAME {
-				val.Type = V_USERFUNC
-				s.sequence[i] = val
-			}
 		}
 	}
 
 	seq.sequence = slices.Delete(seq.sequence, startPos, endPos)
-	return s
+	return s, nil
 }
 
 func (seq *ExecutionSequence) Len() int {

@@ -197,22 +197,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/dece2183/hexowl/operators"
-	"github.com/dece2183/hexowl/utils"
+	"github.com/dece2183/hexowl/v2"
 )
 
 const expresion = "2+2"
 
 func main() {
-	localVars := make(map[string]interface{})
-	words := utils.ParsePrompt(expresion)
+	calc := hexowl.NewCalculator(hexowl.DefaultSystem())
 
-	operatorTree, err := operators.Generate(words, localVars))
-	if err != nil {
-		return err
-	}
-
-	result, err := operators.Calculate(operatorTree, localVars))
+	result, err := calc.Eval(expresion))
 	if err != nil {
 		return err
 	}
@@ -221,7 +214,7 @@ func main() {
 }
 ```
 
-For more specific designs, it is posible to provide an sdtout writer and callbacks for working with environment save files.
+For more specific designs, it is posible to implement the `types.System` interface which should provide a stdout writer and callbacks for file access.
 
 ```go
 package main
@@ -235,49 +228,67 @@ import (
 	"github.com/dece2183/hexowl/builtin/types"
 )
 
-type dummyCloser bytes.Buffer
+type nopCloser struct {
+	bytes.Buffer
+}
 
-var outbuff = &bytes.Buffer{}
-var envFiles map[string]*dummyCloser
-
-func (dc *dummyCloser) Close() error {
+func (*nopCloser) Close() error {
 	return nil
 }
 
-func (dc *dummyCloser) Read(dest []byte) (int, error) {
-	b := bytes.Buffer(*dc)
-	return b.Read(dest)
+type System struct {
+	stdOut  *bytes.Buffer
 }
 
-func (dc *dummyCloser) Write(data []byte) (int, error) {
-	b := bytes.Buffer(*dc)
-	return b.Write(data)
+// Is syntax highlighting enabled for built-in functions output.
+func (s *System) IsHighlightEnabled() bool {
+	return false
+}
+
+// Random seed that sets on SystemInit.
+func (s *System) GetRandomSeed() int64 {
+	return time.Now().Unix()
+}
+
+// Writer for additional output.
+func (s *System) GetStdout() io.Writer {
+	return s.stdOut
+}
+
+// Callback that should clears screen.
+func (s *System) ClearScreen() {
+	stdOut.Reset()
+}
+
+// Callback that should return list of available environment file names.
+func (s *System) ListEnvironments() ([]string, error) {
+	return []string{
+		"a.json",
+		"b.json",
+	}
+}
+
+// Callback that should open environment file with provided name for write and return it as io.WriteCloser.
+func (s *System) WriteEnvironment(name string) (io.WriteCloser, error) {
+	return &nopCloser{}, nil
+}
+
+// Callback that should open environment file with provided name for read and return it as io.ReadCloser.
+func (s *System) ReadEnvironment(name string) (io.ReadCloser, error) {
+	return &nopCloser{}, nil
+}
+
+// Callback that should terminate the program and perform any necessary cleanup.
+func (s *System) Exit(errCode int) {
+	os.Exit(errCode)
 }
 
 func init() {
-	sysDesc := types.System{
-		Stdout: outbuff,
-		ListEnvironments: func() ([]string, error) {
-			return maps.Keys(envFiles), nil
-		},
-		WriteEnvironment: func(name string) (io.WriteCloser, error) {
-			if _, ok := envFiles[name]; !ok {
-				envFiles[name] = &dummyCloser{}
-			}
-			return envFiles[name], nil
-		},
-		ReadEnvironment: func(name string) (io.ReadCloser, error) {
-			if _, ok := envFiles[name]; !ok {
-				return nil, fmt.Errorf("not found")
-			}
-			return envFiles[name], nil
-		},
-	}
-
-	// Now all the additional output will be printed in outbuff.
-	// And environment files will be seved to and loaded from envFiles map.
-	builtin.SystemInit(sysDesc)
+	// Now all the additional output will be printed in sys.stdOut.
+	// And environment files will be saved and loaded from dummy buffers..
+	sys := &System{stdOut: &bytes.Buffer{}}
+	calc := hexowl.NewCalculator(sys)
 }
 ```
 
-There are also functions for registering and manage self-written built-in functions and constants. They are described in [`hexowl/builtin`](https://pkg.go.dev/github.com/dece2183/hexowl/builtin) package.
+There are also methods for registering and manage built-in functions and constants. They are accessible through the [`types.BuiltinContainer`](https://pkg.go.dev/github.com/dece2183/hexowl/v2/types#BuiltinContainer) which is stored in the [`hexowl.Calculator`](https://pkg.go.dev/github.com/dece2183/hexowl/v2#Calculator.GetBuiltinContainer).

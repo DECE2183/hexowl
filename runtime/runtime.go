@@ -93,6 +93,9 @@ variant:
 		}
 		newRn := NewRuntime(rn.ctx)
 		if hasVArgs {
+			if vArgsPos >= len(args) {
+				continue
+			}
 			for i := 0; i < vArgsPos; i++ {
 				newRn.SetLocalVariable(i, args[i])
 			}
@@ -125,7 +128,7 @@ variant:
 		return newRn.Execute(v.Body.Sequence)
 	}
 
-	return nil, fmt.Errorf("unable to find user function variant")
+	return nil, fmt.Errorf("no suitable variant found")
 }
 
 func (rn *Runtime) assignValue(variable types.Value, val interface{}) error {

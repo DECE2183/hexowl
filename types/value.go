@@ -8,13 +8,14 @@ const (
 	V_FUNCNAME
 	V_LOCALVAR
 	V_USERVAR
-	V_BUILTINCONST
 	V_USERFUNC
+	V_BUILTINCONST
 	V_BUILTINFUNC
 	V_LOCALFUNCPTR
 	V_FUNCPTR
 	V_FUNCARG
 	V_FUNCBODY
+	V_UNKNOWN
 )
 
 var valueToStringMap = map[ValueType]string{
@@ -23,13 +24,14 @@ var valueToStringMap = map[ValueType]string{
 	V_FUNCNAME:     "function name",
 	V_LOCALVAR:     "local variable",
 	V_USERVAR:      "user variable",
-	V_BUILTINCONST: "built-in constant",
 	V_USERFUNC:     "user function",
+	V_BUILTINCONST: "built-in constant",
 	V_BUILTINFUNC:  "built-in function",
 	V_LOCALFUNCPTR: "local pointer to function",
 	V_FUNCPTR:      "pointer to function",
 	V_FUNCARG:      "function arguments",
 	V_FUNCBODY:     "function body",
+	V_UNKNOWN:      "unknown value",
 }
 
 func (v ValueType) String() string {
